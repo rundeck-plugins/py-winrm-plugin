@@ -45,20 +45,22 @@ exec_command = os.getenv("RD_EXEC_COMMAND")
 
 endpoint=transport+'://'+args.hostname+':'+port
 
+username = args.username.strip('\'')
+
 if(debug):
     print "------------------------------------------"
     print "endpoint:" +endpoint
     print "authentication:" +authentication
-    print "username:" +args.username
+    print "username:" +username
     print "------------------------------------------"
 
 
 if(nossl):
-    session  = winrm.Session(endpoint, auth=(args.username, password),
+    session  = winrm.Session(endpoint, auth=(username, password),
                                        transport=authentication,
                                        server_cert_validation='ignore')
 else:
-    session  = winrm.Session(endpoint, auth=(args.username, password),
+    session  = winrm.Session(endpoint, auth=(username, password),
                                        transport=authentication)
 
 #print exec_command
