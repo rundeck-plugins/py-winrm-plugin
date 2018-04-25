@@ -45,7 +45,11 @@ exec_command = os.getenv("RD_EXEC_COMMAND")
 
 endpoint=transport+'://'+args.hostname+':'+port
 
-username = args.username.strip('\'')
+if "RD_OPTION_USERNAME" in os.environ:
+    username = os.getenv("RD_OPTION_USERNAME").strip('\'')
+else:
+    username = args.username.strip('\'')
+
 
 if(debug):
     print "------------------------------------------"

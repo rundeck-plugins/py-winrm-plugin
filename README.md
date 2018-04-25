@@ -64,6 +64,7 @@ For further information see:
       winrm-authtype="credssp"/>
 ```
  
+The username can be overwritten using a job input option called "username".
  
 ## Limitations
  

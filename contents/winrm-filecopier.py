@@ -109,15 +109,20 @@ if "RD_CONFIG_WINRMPORT" in os.environ:
 if "RD_CONFIG_NOSSL" in os.environ:
     nossl = os.getenv("RD_CONFIG_NOSSL")
 
+if "RD_OPTION_USERNAME" in os.environ:
+    username = os.getenv("RD_OPTION_USERNAME").strip('\'')
+else:
+    username = args.username.strip('\'')
+
 endpoint=transport+'://'+args.hostname+':'+port
 
 
 if(nossl):
-    session  = winrm.Session(endpoint, auth=(args.username, password),
+    session  = winrm.Session(endpoint, auth=(username, password),
                                        transport=authentication,
                                        server_cert_validation='ignore')
 else:
-    session  = winrm.Session(endpoint, auth=(args.username, password),
+    session  = winrm.Session(endpoint, auth=(username, password),
                                        transport=authentication)
 
 copy = CopyFiles(session)
