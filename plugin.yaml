@@ -149,6 +149,7 @@ providers:
     service: WorkflowStep
     plugin-type: script
     script-interpreter: python -u
+    script-args: "--username ${config.username} --hostname ${config.hostname} --password ${config.password_storage_path} --authentication ${config.authtype} --transport ${config.winrmtransport} --port ${config.winrmport} --nossl ${config.nossl}"
     script-file: winrm-check.py
     config:
       - name: hostname

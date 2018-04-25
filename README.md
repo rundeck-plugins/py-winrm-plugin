@@ -70,6 +70,13 @@ For further information see:
 Don't use the file copier to transfer big files, the performance is not the best to transfer large files. It works OK passing inline scripts to remote windows nodes
 
 
+## Check Step/Script
+
+This plugin include a connectivity test script that can be used as a Workflow Step or it could be called it directly, for example:
+
+```
+python contents/winrm-check.py --username <username> --hostname <windows-server> --password <password>
+```
 
 ## Troubleshooting
 
