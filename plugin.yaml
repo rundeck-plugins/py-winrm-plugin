@@ -143,5 +143,58 @@ providers:
           valueConversion: "STORAGE_PATH_AUTOMATIC_READ"
           storage-path-root: "keys"
           instance-scope-node-attribute: "winrm-password-storage-path"
-
-          
+  - name: WinRMCheck
+    title: WinRM Check Step
+    description: Check the connection with a remote node using winrm-python
+    service: WorkflowStep
+    plugin-type: script
+    script-interpreter: python -u
+    script-file: winrm-check.py
+    config:
+      - name: hostname
+        title: Hostname
+        description: "Window's Hostname"
+        type: String
+        required: true
+      - name: authtype
+        title: Authentication Type
+        description: "Authentication Type"
+        type: Select
+        values: "basic,credssp,ntlm,kerberos,ssl"
+        default: "basic"
+        required: true
+      - name: winrmtransport
+        title: WinRM Transport Protocol
+        description: "WinRM transport protocol (http or https)"
+        type: Select
+        default: "http"
+        values: "http, https"
+        required: true
+        scope: Instance
+      - name: nossl
+        title: No SSL Verification
+        description: "When set to true ssl certificate validation is not performed"
+        type: Select
+        values: "true, false"
+        default: "false"
+        required: true
+      - name: winrmport
+        title: WinRM Port
+        description: "WinRM port (Default: 5985/5986 for http/https)"
+        type: String
+        default: "5985"
+        required: true
+      - name: username
+        title: Username
+        description: "Username from window box"
+        type: String
+        required: true
+      - name: password_storage_path
+        title: Password Storage Path
+        type: String
+        required: true
+        description: "Password storage password path."
+        renderingOptions:
+          selectionAccessor: "STORAGE_PATH"
+          valueConversion: "STORAGE_PATH_AUTOMATIC_READ"
+          storage-path-root: "keys"
