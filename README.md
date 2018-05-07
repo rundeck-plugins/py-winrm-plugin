@@ -40,6 +40,7 @@ For further information see:
 ## Configuration
 
 * **Authentication Type**: The authentication type used for the connection: basic, ntlm, credssp. It can be overwriting at node level using `winrm-authtype`
+* **Username**: (Optional) Username that will connect to the remote node. This value can be set also at node level or as a job input option (with the name `username)
 * **Password Storage Path**: Key storage path of the window's user password. It can be overwriting at node level using `winrm-password-storage-path`
 * **No SSL Verification**: When set to true SSL certificate validation is not performed.  It can be overwriting at node level using `winrm-nossl`
 * **WinRM Transport Protocol**: WinRM transport protocol (http or https). It can be overwriting at node level using `winrm-transport`
@@ -64,7 +65,7 @@ For further information see:
       winrm-authtype="credssp"/>
 ```
  
-The username can be overwritten using a job input option called "username".
+The username can be overwritten using a job input option called "username"` or it can be set at project level.
  
 ## Limitations
  

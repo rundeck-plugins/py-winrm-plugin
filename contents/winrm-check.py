@@ -38,13 +38,13 @@ if args.port:
     port = args.port
 
 if args.nossl:
-    if args.nossl == "True":
+    if args.nossl == "true":
         nossl = True
     else:
         nossl = False
 
 if args.debug:
-    if args.debug == "True":
+    if args.debug == "true":
         debug = True
     else:
         debug = False
@@ -67,7 +67,6 @@ if os.getenv("RD_JOB_LOGLEVEL") == "DEBUG":
 
 endpoint=transport+'://'+hostname+':'+port
 
-
 if(debug):
     print "------------------------------------------"
     print "endpoint:" +endpoint
@@ -77,16 +76,15 @@ if(debug):
     print "transport:" + transport
     print "------------------------------------------"
 
-
-
-
 if(nossl):
-    session  = winrm.Session(endpoint, auth=(username, password),
-                                       transport=authentication,
-                                       server_cert_validation='ignore')
+    session  = winrm.Session(endpoint,
+                             auth=(username, password),
+                             transport=authentication,
+                             server_cert_validation='ignore')
 else:
-    session  = winrm.Session(endpoint, auth=(username, password),
-                                       transport=authentication)
+    session  = winrm.Session(endpoint,
+                             auth=(username, password),
+                            transport=authentication)
 
 exec_command = "ipconfig"
 result = session.run_cmd(exec_command)
