@@ -56,6 +56,15 @@ providers:
         renderingOptions:
           groupName: Connection
           instance-scope-node-attribute: "winrm-port"
+      - name: certpath
+        title: Certificate Path
+        description: "Certificate path for ssl verification"
+        type: String
+        required: false
+        scope: Instance
+        renderingOptions:
+          groupName: Connection
+          instance-scope-node-attribute: "winrm-certpath"
       - name: shell
         title: Shell
         description: "Windows Shell interpreter"
@@ -139,6 +148,15 @@ providers:
         renderingOptions:
           groupName: Connection
           instance-scope-node-attribute: "winrm-port"
+      - name: certpath
+        title: Certificate Path
+        description: "Certificate path for ssl verification"
+        type: String
+        required: false
+        scope: Instance
+        renderingOptions:
+          groupName: Connection
+          instance-scope-node-attribute: "winrm-certpath"
       - name: username
         title: Username
         type: String

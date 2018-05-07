@@ -6,6 +6,8 @@ import base64
 import time
 from base64 import b64encode
 from winrm.protocol import Protocol
+import requests.packages.urllib3
+requests.packages.urllib3.disable_warnings()
 
 
 class RemoteCommandError(Exception):
@@ -107,7 +109,13 @@ if "RD_CONFIG_WINRMPORT" in os.environ:
     port = os.getenv("RD_CONFIG_WINRMPORT")
 
 if "RD_CONFIG_NOSSL" in os.environ:
-    nossl = os.getenv("RD_CONFIG_NOSSL")
+    if os.getenv("RD_CONFIG_NOSSL") == "true":
+        nossl = True
+    else:
+        nossl = False
+
+if "RD_CONFIG_CERTPATH" in os.environ:
+    certpath = os.getenv("RD_CONFIG_CERTPATH")
 
 if "RD_OPTION_USERNAME" in os.environ and os.getenv("RD_OPTION_USERNAME"):
     #take user from job
@@ -123,15 +131,19 @@ else:
 
 endpoint = transport+'://'+args.hostname+':'+port
 
-if(nossl):
-    session = winrm.Session(endpoint,
-                            auth=(username, password),
-                            transport=authentication,
-                            server_cert_validation='ignore')
+arguments = {}
+arguments["transport"] = authentication
+
+if(nossl == True):
+    arguments["server_cert_validation"] = "ignore"
 else:
-    session = winrm.Session(endpoint,
-                            auth=(username, password),
-                            transport=authentication)
+    if(transport=="https"):
+        arguments["server_cert_validation"] = "validate"
+        arguments["ca_trust_path"] = certpath
+
+session = winrm.Session(target=endpoint,
+                        auth=(username, password),
+                        **arguments)
 
 copy = CopyFiles(session)
 copy.winrm_upload(args.destination,args.source)

@@ -2,9 +2,9 @@ import winrm
 import argparse
 import os
 import sys
-
+import requests.packages.urllib3
+requests.packages.urllib3.disable_warnings()
 from winrm.protocol import Protocol
-
 
 parser = argparse.ArgumentParser(description='Run Bolt command.')
 parser.add_argument('hostname', help='the hostname')
@@ -17,6 +17,7 @@ port = "5985"
 nossl=False
 debug=False
 shell = "cmd"
+certpath = None
 
 if "RD_CONFIG_PASSWORD_STORAGE_PATH" in os.environ:
     password = os.getenv("RD_CONFIG_PASSWORD_STORAGE_PATH")
@@ -31,7 +32,10 @@ if "RD_CONFIG_WINRMPORT" in os.environ:
     port = os.getenv("RD_CONFIG_WINRMPORT")
 
 if "RD_CONFIG_NOSSL" in os.environ:
-    nossl = os.getenv("RD_CONFIG_NOSSL")
+    if os.getenv("RD_CONFIG_NOSSL") == "true":
+        nossl = True
+    else:
+        nossl = False
 
 if "RD_CONFIG_SHELL" in os.environ:
     shell = os.getenv("RD_CONFIG_SHELL")
@@ -39,6 +43,8 @@ if "RD_CONFIG_SHELL" in os.environ:
 if os.getenv("RD_JOB_LOGLEVEL") == "DEBUG":
     debug = True
 
+if "RD_CONFIG_CERTPATH" in os.environ:
+    certpath = os.getenv("RD_CONFIG_CERTPATH")
 
 exec_command = os.getenv("RD_EXEC_COMMAND") 
 
@@ -61,18 +67,22 @@ if(debug):
     print "endpoint:" +endpoint
     print "authentication:" +authentication
     print "username:" +username
+    print "nossl:" + str(nossl)
     print "------------------------------------------"
 
+arguments = {}
+arguments["transport"] = authentication
 
-if(nossl):
-    session  = winrm.Session(endpoint,
-                             auth=(username, password),
-                             transport=authentication,
-                             server_cert_validation='ignore')
+if(nossl == True):
+    arguments["server_cert_validation"] = "ignore"
 else:
-    session  = winrm.Session(endpoint,
-                             auth=(username, password),
-                             transport=authentication)
+    if(transport=="https"):
+        arguments["server_cert_validation"] = "validate"
+        arguments["ca_trust_path"] = certpath
+
+session = winrm.Session(target=endpoint,
+                        auth=(username, password),
+                        **arguments)
 
 if shell == "cmd":
     result = session.run_cmd(exec_command)
@@ -80,8 +90,9 @@ if shell == "cmd":
 if shell == "powershell":
     result = session.run_ps(exec_command)
 
-
 print result.std_out
-print result.std_err
+
+if(result.std_err):
+    print result.std_err
 
 sys.exit(result.status_code)
