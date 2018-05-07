@@ -7,7 +7,6 @@ from winrm.protocol import Protocol
 
 
 parser = argparse.ArgumentParser(description='Run Bolt command.')
-parser.add_argument('username', help='the username')
 parser.add_argument('hostname', help='the hostname')
 args = parser.parse_args()
 
@@ -45,11 +44,17 @@ exec_command = os.getenv("RD_EXEC_COMMAND")
 
 endpoint=transport+'://'+args.hostname+':'+port
 
-if "RD_OPTION_USERNAME" in os.environ:
+if "RD_OPTION_USERNAME" in os.environ and os.getenv("RD_OPTION_USERNAME"):
+    #take user from job
     username = os.getenv("RD_OPTION_USERNAME").strip('\'')
 else:
-    username = args.username.strip('\'')
-
+    # take user from node
+    if "RD_NODE_USERNAME" in os.environ and os.getenv("RD_NODE_USERNAME"):
+        username = os.getenv("RD_NODE_USERNAME").strip('\'')
+    else:
+        # take user from project
+        if "RD_CONFIG_USERNAME" in os.environ and os.getenv("RD_CONFIG_USERNAME"):
+            username = os.getenv("RD_CONFIG_USERNAME").strip('\'')
 
 if(debug):
     print "------------------------------------------"
@@ -60,14 +65,14 @@ if(debug):
 
 
 if(nossl):
-    session  = winrm.Session(endpoint, auth=(username, password),
-                                       transport=authentication,
-                                       server_cert_validation='ignore')
+    session  = winrm.Session(endpoint,
+                             auth=(username, password),
+                             transport=authentication,
+                             server_cert_validation='ignore')
 else:
-    session  = winrm.Session(endpoint, auth=(username, password),
-                                       transport=authentication)
-
-#print exec_command
+    session  = winrm.Session(endpoint,
+                             auth=(username, password),
+                             transport=authentication)
 
 if shell == "cmd":
     result = session.run_cmd(exec_command)
