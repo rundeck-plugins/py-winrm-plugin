@@ -11,14 +11,14 @@ providers:
     plugin-type: script
     script-interpreter: python -u
     script-file: winrm-exec.py
-    script-args: ${node.username} ${node.hostname}
+    script-args: ${node.hostname}
     config:
       - name: authtype
         title: Authentication Type
         description: "Authentication Type"
         type: Select
         values: "basic,credssp,ntlm"
-        default: "plaintext"
+        default: "basic"
         required: true
         scope: Instance
         renderingOptions:
@@ -67,6 +67,14 @@ providers:
         renderingOptions:
           groupName: Connection
           instance-scope-node-attribute: "winrm-shell"
+      - name: username
+        title: Username
+        type: String
+        required: false
+        description: "Optional username. The username can be set at node level (using the attribute `username`) or at job level (using an input option called `username`)."
+        scope: Instance
+        renderingOptions:
+          groupName: Authentication
       - name: password_storage_path
         title: Password Storage Path
         type: String
@@ -86,14 +94,14 @@ providers:
     plugin-type: script
     script-interpreter: python -u
     script-file: winrm-filecopier.py
-    script-args: ${node.username} ${node.hostname} ${file-copy.file} ${file-copy.destination}
+    script-args: ${node.hostname} ${file-copy.file} ${file-copy.destination}
     config:
       - name: authtype
         title: Authentication Type
         description: "Authentication Type"
         type: Select
         values: "basic,credssp,ntlm"
-        default: "plaintext"
+        default: "basic"
         required: true
         scope: Instance
         renderingOptions:
@@ -131,6 +139,14 @@ providers:
         renderingOptions:
           groupName: Connection
           instance-scope-node-attribute: "winrm-port"
+      - name: username
+        title: Username
+        type: String
+        required: false
+        description: "Optional username. The username can be set at node level (using the attribute `username`) or at job level (using an input option called `username`)."
+        scope: Instance
+        renderingOptions:
+          groupName: Authentication
       - name: password_storage_path
         title: Password Storage Path
         type: String

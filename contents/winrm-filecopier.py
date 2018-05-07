@@ -5,8 +5,8 @@ import sys
 import base64
 import time
 from base64 import b64encode
-
 from winrm.protocol import Protocol
+
 
 class RemoteCommandError(Exception):
     def __init__(self, command, return_code, std_out='', std_err=''):
@@ -20,6 +20,7 @@ class RemoteCommandError(Exception):
 
 class WinRmError(RemoteCommandError):
     pass
+
 
 class CopyFiles(object):
 
@@ -78,7 +79,6 @@ class CopyFiles(object):
 
 
 parser = argparse.ArgumentParser(description='Run Bolt command.')
-parser.add_argument('username', help='the username')
 parser.add_argument('hostname', help='the hostname')
 parser.add_argument('source', help='Source File')
 parser.add_argument('destination', help='Destination File')
@@ -91,8 +91,8 @@ password=None
 authentication = "basic"
 transport = "http"
 port = "5985"
-nossl=False
-debug=False
+nossl = False
+debug = False
 
 if "RD_CONFIG_PASSWORD_STORAGE_PATH" in os.environ:
     password = os.getenv("RD_CONFIG_PASSWORD_STORAGE_PATH")
@@ -109,21 +109,29 @@ if "RD_CONFIG_WINRMPORT" in os.environ:
 if "RD_CONFIG_NOSSL" in os.environ:
     nossl = os.getenv("RD_CONFIG_NOSSL")
 
-if "RD_OPTION_USERNAME" in os.environ:
+if "RD_OPTION_USERNAME" in os.environ and os.getenv("RD_OPTION_USERNAME"):
+    #take user from job
     username = os.getenv("RD_OPTION_USERNAME").strip('\'')
 else:
-    username = args.username.strip('\'')
+    # take user from node
+    if "RD_NODE_USERNAME" in os.environ and os.getenv("RD_NODE_USERNAME"):
+        username = os.getenv("RD_NODE_USERNAME").strip('\'')
+    else:
+        # take user from project
+        if "RD_CONFIG_USERNAME" in os.environ and os.getenv("RD_CONFIG_USERNAME"):
+            username = os.getenv("RD_CONFIG_USERNAME").strip('\'')
 
-endpoint=transport+'://'+args.hostname+':'+port
-
+endpoint = transport+'://'+args.hostname+':'+port
 
 if(nossl):
-    session  = winrm.Session(endpoint, auth=(username, password),
-                                       transport=authentication,
-                                       server_cert_validation='ignore')
+    session = winrm.Session(endpoint,
+                            auth=(username, password),
+                            transport=authentication,
+                            server_cert_validation='ignore')
 else:
-    session  = winrm.Session(endpoint, auth=(username, password),
-                                       transport=authentication)
+    session = winrm.Session(endpoint,
+                            auth=(username, password),
+                            transport=authentication)
 
 copy = CopyFiles(session)
 copy.winrm_upload(args.destination,args.source)
