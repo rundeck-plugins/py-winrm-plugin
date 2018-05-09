@@ -183,7 +183,7 @@ providers:
     service: WorkflowStep
     plugin-type: script
     script-interpreter: python -u
-    script-args: "--username ${config.username} --hostname ${config.hostname} --password ${config.password_storage_path} --authentication ${config.authtype} --transport ${config.winrmtransport} --port ${config.winrmport} --nossl ${config.nossl}"
+    script-args: "--username ${config.username} --hostname ${config.hostname} --password ${config.password_storage_path} --authentication ${config.authtype} --transport ${config.winrmtransport} --port ${config.winrmport} --nossl ${config.nossl} --debug ${config.debug} --certpath ${config.certpath}"
     script-file: winrm-check.py
     config:
       - name: hostname
@@ -219,6 +219,11 @@ providers:
         type: String
         default: "5985"
         required: true
+      - name: certpath
+        title: Certificate Path
+        description: "Certificate path for ssl verification"
+        type: String
+        required: false
       - name: username
         title: Username
         description: "Username from window box"
@@ -233,3 +238,7 @@ providers:
           selectionAccessor: "STORAGE_PATH"
           valueConversion: "STORAGE_PATH_AUTOMATIC_READ"
           storage-path-root: "keys"
+      - type: Boolean
+        name: debug
+        title: Debug?
+        description: 'Write debug messages'
