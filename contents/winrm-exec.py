@@ -1,10 +1,11 @@
-import winrm
 import argparse
 import os
 import sys
 import requests.packages.urllib3
+import winrm_session
+import threading
+
 requests.packages.urllib3.disable_warnings()
-from winrm.protocol import Protocol
 
 parser = argparse.ArgumentParser(description='Run Bolt command.')
 parser.add_argument('hostname', help='the hostname')
@@ -18,9 +19,6 @@ nossl=False
 debug=False
 shell = "cmd"
 certpath = None
-
-if "RD_CONFIG_PASSWORD_STORAGE_PATH" in os.environ:
-    password = os.getenv("RD_CONFIG_PASSWORD_STORAGE_PATH")
 
 if "RD_CONFIG_AUTHTYPE" in os.environ:
     authentication = os.getenv("RD_CONFIG_AUTHTYPE")
@@ -62,13 +60,20 @@ else:
         if "RD_CONFIG_USERNAME" in os.environ and os.getenv("RD_CONFIG_USERNAME"):
             username = os.getenv("RD_CONFIG_USERNAME").strip('\'')
 
-if(debug):
-    print "------------------------------------------"
-    print "endpoint:" +endpoint
-    print "authentication:" +authentication
-    print "username:" +username
-    print "nossl:" + str(nossl)
-    print "------------------------------------------"
+if "RD_OPTION_WINRMPASSWORD" in os.environ and os.getenv("RD_OPTION_WINRMPASSWORD"):
+    #take password from job
+    password = os.getenv("RD_OPTION_WINRMPASSWORD").strip('\'')
+else:
+    if "RD_CONFIG_PASSWORD_STORAGE_PATH" in os.environ:
+        password = os.getenv("RD_CONFIG_PASSWORD_STORAGE_PATH")
+
+if debug:
+    print("------------------------------------------")
+    print("endpoint:" + endpoint)
+    print("authentication:" + authentication)
+    print("username:" + username)
+    print("nossl:" + str(nossl))
+    print("------------------------------------------")
 
 arguments = {}
 arguments["transport"] = authentication
@@ -76,23 +81,48 @@ arguments["transport"] = authentication
 if(nossl == True):
     arguments["server_cert_validation"] = "ignore"
 else:
-    if(transport=="https"):
+    if(transport == "https"):
         arguments["server_cert_validation"] = "validate"
         arguments["ca_trust_path"] = certpath
 
-session = winrm.Session(target=endpoint,
+session = winrm_session.Session(target=endpoint,
                         auth=(username, password),
                         **arguments)
 
-if shell == "cmd":
-    result = session.run_cmd(exec_command)
+tsk = winrm_session.RunCommand(session, shell, exec_command)
+t = threading.Thread(target=tsk.get_response)
+t.start()
+realstdout = sys.stdout
+realstderr = sys.stderr
+sys.stdout = tsk.o_stream
+sys.stderr = tsk.e_stream
 
-if shell == "powershell":
-    result = session.run_ps(exec_command)
+lastpos = 0
+lasterrorpos = 0
 
-print result.std_out
+while True:
+    t.join(.1)
 
-if(result.std_err):
-    print result.std_err
+    if sys.stdout.tell() != lastpos:
+        sys.stdout.seek(lastpos)
+        realstdout.write(sys.stdout.read())
+        lastpos = sys.stdout.tell()
 
-sys.exit(result.status_code)
+    if sys.stderr.tell() != lasterrorpos:
+        sys.stderr.seek(lasterrorpos)
+        realstderr.write(session._clean_error_msg(sys.stderr.read()))
+        lasterrorpos = sys.stderr.tell()
+
+    if not t.is_alive():
+        break
+
+sys.stdout.seek(0)
+sys.stderr.seek(0)
+sys.stdout = realstdout
+sys.stderr = realstderr
+
+if tsk.e_std:
+    sys.stderr.write(tsk.e_std)
+    sys.exit(1)
+else:
+    sys.exit(tsk.stat)

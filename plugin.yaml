@@ -1,8 +1,9 @@
 name: py-winrm-plugin
-version: 1.0.0
 rundeckPluginVersion: 1.2
-author: Luis Toledo
-date: Tue Nov 28 2017
+author: "@author@"
+date: "@date@"
+version: "@version@"
+url: "@url@"
 providers:
   - name: WinRMPython
     title: WinRM Node Executor Python
@@ -177,6 +178,10 @@ providers:
           valueConversion: "STORAGE_PATH_AUTOMATIC_READ"
           storage-path-root: "keys"
           instance-scope-node-attribute: "winrm-password-storage-path"
+      - type: Boolean
+        name: debug
+        title: Debug?
+        description: 'Write debug messages'
   - name: WinRMCheck
     title: WinRM Check Step
     description: Check the connection with a remote node using winrm-python
