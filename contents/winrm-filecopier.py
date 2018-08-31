@@ -4,10 +4,23 @@ import os
 import sys
 import base64
 import time
-from base64 import b64encode
-from winrm.protocol import Protocol
+import common
 import requests.packages.urllib3
+import logging
+
 requests.packages.urllib3.disable_warnings()
+
+if os.environ.get('RD_CONFIG_DEBUG') == 'true':
+    log_level = 'DEBUG'
+else:
+    log_level = 'ERROR'
+
+logging.basicConfig(
+    stream=sys.stdout,
+    level=getattr(logging, log_level),
+    format='%(levelname)s: %(name)s: %(message)s'
+)
+log = logging.getLogger('winrm-filecopier')
 
 
 class RemoteCommandError(Exception):
@@ -29,19 +42,24 @@ class CopyFiles(object):
     def __init__(self, session):
         self.session=session
 
-    def winrm_upload(
-            self,
-            remote_path,
-            local_path,
-            step=1024,
-            winrm_kwargs=dict(),
-            quiet=False,
-            **kwargs
-    ):
-        
-        self.session.run_ps('if (Test-Path {0}) {{ Remove-Item {0} }}'.format(remote_path))
+
+    def winrm_upload(self,
+                    remote_path,
+                    remote_filename,
+                    local_path,
+                    step=2048,
+                    quiet=True):
+
+        if remote_path.endswith('/') or remote_path.endswith('\\'):
+            full_path = remote_path + remote_filename
+        else:
+            full_path = remote_path + "\\" + remote_filename
+
+        print("coping file %s to %s" % (local_path, full_path))
+
+        self.session.run_ps('if (!(Test-Path {0})) {{ New-Item -ItemType directory -Path {0} }}'.format(remote_path))
+
         size = os.stat(local_path).st_size
-        start = time.time()
         with open(local_path, 'rb') as f:
             for i in range(0, size, step):
                 script = (
@@ -49,7 +67,7 @@ class CopyFiles(object):
                     '$([System.Convert]::FromBase64String("{}")) '
                     '-encoding byte -path {}'.format(
                         base64.b64encode(f.read(step)),
-                        remote_path
+                        full_path
                     )
                 )
                 while True:
@@ -61,7 +79,6 @@ class CopyFiles(object):
                     if code == 0:
                         break
                     elif code == 1 and 'used by another process' in stderr:
-                        # Small delay so previous write can settle down
                         time.sleep(0.1)
                     else:
                         raise WinRmError(script, code, stdout, stderr)
@@ -74,9 +91,10 @@ class CopyFiles(object):
                         (100 * transferred) // size
                     ) + ' %'
                     percentage_string = (
-                        ' ' * (5 - len(percentage_string)) +
+                        ' ' * (10 - len(percentage_string)) +
                         percentage_string
                     )
+                    print(percentage_string)
                     sys.stdout.flush()
 
 
@@ -84,6 +102,7 @@ parser = argparse.ArgumentParser(description='Run Bolt command.')
 parser.add_argument('hostname', help='the hostname')
 parser.add_argument('source', help='Source File')
 parser.add_argument('destination', help='Destination File')
+
 args = parser.parse_args()
 
 #it is necesarry to avoid the debug error
@@ -95,9 +114,6 @@ transport = "http"
 port = "5985"
 nossl = False
 debug = False
-
-if "RD_CONFIG_PASSWORD_STORAGE_PATH" in os.environ:
-    password = os.getenv("RD_CONFIG_PASSWORD_STORAGE_PATH")
 
 if "RD_CONFIG_AUTHTYPE" in os.environ:
     authentication = os.getenv("RD_CONFIG_AUTHTYPE")
@@ -129,6 +145,17 @@ else:
         if "RD_CONFIG_USERNAME" in os.environ and os.getenv("RD_CONFIG_USERNAME"):
             username = os.getenv("RD_CONFIG_USERNAME").strip('\'')
 
+if "RD_OPTION_WINRMPASSWORD" in os.environ and os.getenv("RD_OPTION_WINRMPASSWORD"):
+    #take password from job
+    password = os.getenv("RD_OPTION_WINRMPASSWORD").strip('\'')
+else:
+    if "RD_CONFIG_PASSWORD_STORAGE_PATH" in os.environ:
+        password = os.getenv("RD_CONFIG_PASSWORD_STORAGE_PATH")
+
+quiet = True
+if "RD_CONFIG_DEBUG" in os.environ:
+    quiet = False
+
 endpoint = transport+'://'+args.hostname+':'+port
 
 arguments = {}
@@ -146,4 +173,25 @@ session = winrm.Session(target=endpoint,
                         **arguments)
 
 copy = CopyFiles(session)
-copy.winrm_upload(args.destination,args.source)
+
+destination = args.destination
+filename = os.path.basename(args.source)
+
+if filename in args.destination:
+    destination = destination.replace(filename, '')
+else:
+    isFile = common.check_is_file(args.destination)
+    if isFile:
+        filename = common.get_file(args.destination)
+        destination = destination.replace(filename, '')
+    else:
+        filename = os.path.basename(args.source)
+
+if not os.path.isdir(args.source):
+    copy.winrm_upload(remote_path=destination,
+                      remote_filename=filename,
+                      local_path=args.source,
+                      quiet=quiet)
+else:
+    log.warn("The source is a directory, skipping copy")
+
