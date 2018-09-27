@@ -15,8 +15,16 @@ ext.buildDateString=new Date().format("yyyy-MM-dd'T'HH:mm:ssX")
 ext.archivesBaseName = "py-winrm-plugin"
 ext.pluginBaseFolder = "."
 
+
 scmVersion {
-    ignoreUncommittedChanges = false
+    ext.cienv=System.env.CI
+    ext.ignoreUncommittedChanges=false
+
+    if (ext.cienv) {
+        ext.ignoreUncommittedChanges=true
+    }
+
+    ignoreUncommittedChanges = ext.ignoreUncommittedChanges
     tag {
         prefix = ''
         versionSeparator = ''
