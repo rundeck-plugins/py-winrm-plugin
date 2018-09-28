@@ -17,7 +17,7 @@ ext.pluginBaseFolder = "."
 
 
 scmVersion {
-    ignoreUncommittedChanges = false
+    ignoreUncommittedChanges = true
     tag {
         prefix = ''
         versionSeparator = ''
