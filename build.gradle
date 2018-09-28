@@ -17,14 +17,7 @@ ext.pluginBaseFolder = "."
 
 
 scmVersion {
-    ext.cienv=System.env.CI
-    ext.ignoreUncommittedChanges=false
-
-    if (ext.cienv) {
-        ext.ignoreUncommittedChanges=true
-    }
-
-    ignoreUncommittedChanges = ext.ignoreUncommittedChanges
+    ignoreUncommittedChanges = true
     tag {
         prefix = ''
         versionSeparator = ''
