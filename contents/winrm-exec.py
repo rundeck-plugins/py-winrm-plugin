@@ -122,7 +122,7 @@ sys.stdout = realstdout
 sys.stderr = realstderr
 
 if tsk.e_std:
-    sys.stderr.write(tsk.e_std)
+    sys.stderr.write("Execution finished with the folling error:\n %s" % tsk.e_std)
     sys.exit(1)
 else:
     sys.exit(tsk.stat)

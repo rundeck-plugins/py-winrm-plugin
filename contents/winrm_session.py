@@ -62,38 +62,27 @@ class Session(object):
         encoded_ps = b64encode(script.encode('utf_16_le')).decode('ascii')
         rs = self.run_cmd('powershell -encodedcommand {0}'.format(encoded_ps),out_stream=out_stream, err_stream=err_stream)
 
-        #print "run_ps=>err_stream: %s" % err_stream.getvalue()
-
-        error = self._clean_error_msg(rs.std_err)
-        rs.std_err = error
         return rs
 
     def _clean_error_msg(self, msg):
-        if msg.startswith(b"#< CLIXML\r\n"):
+        if msg.startswith(b"#< CLIXML\r\n") or "<Objs Version=" in msg:
+            new_msg = ""
             msg_xml = msg[11:]
             try:
                 # remove the namespaces from the xml for easier processing
                 msg_xml = self._strip_namespace(msg_xml)
                 root = ET.fromstring(msg_xml)
+
                 # the S node is the error message, find all S nodes
                 nodes = root.findall("./S")
-                new_msg = ""
                 for s in nodes:
                     # append error msg string to result, also
                     # the hex chars represent CRLF so we replace with newline
                     new_msg += s.text.replace("_x000D__x000A_", "\n")
+                return new_msg
             except Exception as e:
                 # if any of the above fails, the msg was not true xml
-                # print a warning and return the orignal string
-                print("Warning: there was a problem converting the Powershell"
-                      " error message: %s" % (e))
-            else:
-                # if new_msg was populated, that's our error message
-                # otherwise the original error message will be used
-                if len(new_msg):
-                    # remove leading and trailing whitespace while we are here
-                    msg = new_msg.strip()
-            return new_msg
+                return ""
         else:
             return msg
 
