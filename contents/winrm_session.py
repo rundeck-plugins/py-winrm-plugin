@@ -65,7 +65,7 @@ class Session(object):
         return rs
 
     def _clean_error_msg(self, msg):
-        if msg.startswith(b"#< CLIXML\r\n") or "<Objs Version=" in msg:
+        if msg.startswith(b"#< CLIXML\r\n") or "<Objs Version=" or "-1</PI><PC>" in msg:
             new_msg = ""
             msg_xml = msg[11:]
             try:
