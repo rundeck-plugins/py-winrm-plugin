@@ -122,14 +122,20 @@ class RunCommand:
         self.shell = shell
 
     def get_response(self):
-        if self.shell == "cmd":
-            response = self.session.run_cmd(self.exec_command, out_stream=self.o_stream, err_stream=self.e_stream)
-            self.o_std = response.std_out
-            self.e_std = response.std_err
-            self.stat = response.status_code
+        try:
+            if self.shell == "cmd":
+                response = self.session.run_cmd(self.exec_command, out_stream=self.o_stream, err_stream=self.e_stream)
+                self.o_std = response.std_out
+                self.e_std = response.std_err
+                self.stat = response.status_code
 
-        if self.shell == "powershell":
-            response = self.session.run_ps(self.exec_command, out_stream=self.o_stream, err_stream=self.e_stream)
-            self.o_std = response.std_out
-            self.e_std = response.std_err
-            self.stat = response.status_code
+            if self.shell == "powershell":
+                response = self.session.run_ps(self.exec_command, out_stream=self.o_stream, err_stream=self.e_stream)
+                self.o_std = response.std_out
+                self.e_std = response.std_err
+                self.stat = response.status_code
+
+        except Exception as e:
+            print(e)
+            self.e_std = e
+            self.stat=-1
