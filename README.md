@@ -94,3 +94,15 @@ Update your verion of PyOpenSSL:
 ```
 python -m easy_install --upgrade pyOpenSSL
 ```
+If you get the following error after run a PowerShell Script:
+```
+Failed: NonZeroResultCode: [WinRM Python] Result code: 1
+```
+Please check first if you have disable the ExecutionPolicy on PowerShell
+```
+Get-ExecutionPolicy
+```
+If the result is Restricted, please run the following command:
+```
+Set-ExecutionPolicy -ExecutionPolicy Unrestricted
+```
