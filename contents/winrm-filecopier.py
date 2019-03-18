@@ -7,6 +7,7 @@ import time
 import common
 import requests.packages.urllib3
 import logging
+import ntpath
 
 requests.packages.urllib3.disable_warnings()
 
@@ -175,7 +176,7 @@ session = winrm.Session(target=endpoint,
 copy = CopyFiles(session)
 
 destination = args.destination
-filename = os.path.basename(args.source)
+filename = ntpath.basename(args.destination)
 
 if filename in args.destination:
     destination = destination.replace(filename, '')
