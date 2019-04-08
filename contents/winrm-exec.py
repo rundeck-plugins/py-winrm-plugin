@@ -1,9 +1,15 @@
 import argparse
-import os
+try:
+	import os; os.environ['PATH']
+except:
+	import os
+	os.environ.setdefault('PATH', '')
 import sys
 import requests.packages.urllib3
 import winrm_session
 import threading
+import traceback
+import winrm
 
 requests.packages.urllib3.disable_warnings()
 
@@ -16,6 +22,7 @@ authentication = "basic"
 transport = "http"
 port = "5985"
 nossl=False
+diabletls12=False
 debug=False
 shell = "cmd"
 certpath = None
@@ -34,6 +41,12 @@ if "RD_CONFIG_NOSSL" in os.environ:
         nossl = True
     else:
         nossl = False
+
+if "RD_CONFIG_DISABLETLS12" in os.environ:
+    if os.getenv("RD_CONFIG_DISABLETLS12") == "true":
+        diabletls12 = True
+    else:
+        diabletls12 = False
 
 if "RD_CONFIG_SHELL" in os.environ:
     shell = os.getenv("RD_CONFIG_SHELL")
@@ -73,6 +86,7 @@ if debug:
     print("authentication:" + authentication)
     print("username:" + username)
     print("nossl:" + str(nossl))
+    print("diabletls12:" + str(diabletls12))
     print("------------------------------------------")
 
 arguments = {}
@@ -85,9 +99,15 @@ else:
         arguments["server_cert_validation"] = "validate"
         arguments["ca_trust_path"] = certpath
 
-session = winrm_session.Session(target=endpoint,
+arguments["credssp_disable_tlsv1_2"] = diabletls12
+
+session = winrm.Session(target=endpoint,
                         auth=(username, password),
                         **arguments)
+
+winrm.Session.run_cmd = winrm_session.run_cmd
+winrm.Session.run_ps = winrm_session.run_ps
+winrm.Session._clean_error_msg = winrm_session._clean_error_msg
 
 tsk = winrm_session.RunCommand(session, shell, exec_command)
 t = threading.Thread(target=tsk.get_response)
@@ -109,9 +129,12 @@ while True:
         lastpos = sys.stdout.tell()
 
     if sys.stderr.tell() != lasterrorpos:
-        sys.stderr.seek(lasterrorpos)
-        realstderr.write(session._clean_error_msg(sys.stderr.read()))
-        lasterrorpos = sys.stderr.tell()
+        try:
+            sys.stderr.seek(lasterrorpos)
+            realstderr.write(session._clean_error_msg(sys.stderr.read()))
+            lasterrorpos = sys.stderr.tell()
+        except Exception as e:
+            traceback.print_exc(file=sys.stdout)
 
     if not t.is_alive():
         break

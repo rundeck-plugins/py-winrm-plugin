@@ -36,6 +36,16 @@ providers:
         renderingOptions:
           groupName: Connection
           instance-scope-node-attribute: "winrm-nossl"
+      - name: disabletls12
+        title: Disable TLS 1.2
+        description: "Disable TLS 1.2 in order to run over TLS 1.0"
+        type: Boolean
+        default: "false"
+        required: true
+        scope: Instance
+        renderingOptions:
+          groupName: Connection
+          instance-scope-node-attribute: "winrm-disable-tls-12"
       - name: winrmtransport
         title: WinRM Transport Protocol
         description: "WinRM transport protocol (http or https)"
@@ -128,6 +138,16 @@ providers:
         renderingOptions:
           groupName: Connection
           instance-scope-node-attribute: "winrm-nossl"
+      - name: disabletls12
+        title: Disable TLS 1.2
+        description: "Disable TLS 1.2 in order to run over TLS 1.0"
+        type: Boolean
+        default: "false"
+        required: true
+        scope: Instance
+        renderingOptions:
+          groupName: Connection
+          instance-scope-node-attribute: "winrm-disable-tls-12"
       - name: winrmtransport
         title: WinRM Transport Protocol
         description: "WinRM transport protocol (Default: http or https when ssl is selected for Authentication type)"
@@ -216,6 +236,12 @@ providers:
         description: "When set to true ssl certificate validation is not performed"
         type: Select
         values: "true, false"
+        default: "false"
+        required: true
+      - name: disabletls12
+        title: Disable TLS 1.2
+        description: "Disable TLS 1.2 in order to run over TLS 1.0"
+        type: Boolean
         default: "false"
         required: true
       - name: winrmport

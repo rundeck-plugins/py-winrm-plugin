@@ -60,16 +60,16 @@ def _raw_get_command_output(protocol,shell_id, command_id, out_stream=None, err_
         if not stream_node.text:
             continue
 
-        content = str(base64.b64decode(stream_node.text.encode('ascii')))
+        content = base64.b64decode(stream_node.text.encode('ascii')).decode("Windows-1252")
 
         if stream_node.attrib['Name'] == 'stdout':
             if out_stream:
                 out_stream.write(content)
-            stdout += content
+            stdout += content.encode('Windows-1252')
         elif stream_node.attrib['Name'] == 'stderr':
             if err_stream:
                 err_stream.write(content)
-            stderr += content
+            stderr += content.encode('Windows-1252')
 
     command_done = len([
         node for node in root.findall('.//*')

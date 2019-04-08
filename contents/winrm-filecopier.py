@@ -1,6 +1,10 @@
 import winrm
 import argparse
-import os
+try:
+	import os; os.environ['PATH']
+except:
+	import os
+	os.environ.setdefault('PATH', '')
 import sys
 import base64
 import time
@@ -8,6 +12,44 @@ import common
 import requests.packages.urllib3
 import logging
 import ntpath
+import xml.etree.ElementTree as ET
+
+
+def _clean_error_msg(self, msg):
+    """converts a Powershell CLIXML message to a more human readable string
+    """
+    # TODO prepare unit test, beautify code
+    # if the msg does not start with this, return it as is
+    if type(msg) == bytes and msg.startswith(b"#< CLIXML\r\n"):
+        # for proper xml, we need to remove the CLIXML part
+        # (the first line)
+        msg_xml = msg[11:]
+        try:
+            # remove the namespaces from the xml for easier processing
+            msg_xml = self._strip_namespace(msg_xml)
+            root = ET.fromstring(msg_xml)
+            # the S node is the error message, find all S nodes
+            nodes = root.findall("./S")
+            new_msg = ""
+            for s in nodes:
+                # append error msg string to result, also
+                # the hex chars represent CRLF so we replace with newline
+                print(s.text)
+                new_msg += s.text.replace("_x000D__x000A_", "\n")
+        except Exception as e:
+            # if any of the above fails, the msg was not true xml
+            # print a warning and return the orignal string
+            # TODO do not print, raise user defined error instead
+            print("Warning: there was a problem converting the Powershell"
+                  " error message: %s" % (e))
+        else:
+            # if new_msg was populated, that's our error message
+            # otherwise the original error message will be used
+            if len(new_msg):
+                # remove leading and trailing whitespace while we are here
+                msg = new_msg.strip()
+    return msg
+
 
 requests.packages.urllib3.disable_warnings()
 
@@ -67,7 +109,7 @@ class CopyFiles(object):
                     'add-content -value '
                     '$([System.Convert]::FromBase64String("{}")) '
                     '-encoding byte -path {}'.format(
-                        base64.b64encode(f.read(step)),
+                        base64.b64encode(f.read(step)).decode(),
                         full_path
                     )
                 )
@@ -107,7 +149,7 @@ parser.add_argument('destination', help='Destination File')
 args = parser.parse_args()
 
 #it is necesarry to avoid the debug error
-print args.destination
+print(args.destination)
 
 password=None
 authentication = "basic"
@@ -115,6 +157,7 @@ transport = "http"
 port = "5985"
 nossl = False
 debug = False
+diabletls12 = False
 
 if "RD_CONFIG_AUTHTYPE" in os.environ:
     authentication = os.getenv("RD_CONFIG_AUTHTYPE")
@@ -130,6 +173,12 @@ if "RD_CONFIG_NOSSL" in os.environ:
         nossl = True
     else:
         nossl = False
+
+if "RD_CONFIG_DISABLETLS12" in os.environ:
+    if os.getenv("RD_CONFIG_DISABLETLS12") == "true":
+        diabletls12 = True
+    else:
+        diabletls12 = False
 
 if "RD_CONFIG_CERTPATH" in os.environ:
     certpath = os.getenv("RD_CONFIG_CERTPATH")
@@ -169,14 +218,21 @@ else:
         arguments["server_cert_validation"] = "validate"
         arguments["ca_trust_path"] = certpath
 
+arguments["credssp_disable_tlsv1_2"] = diabletls12
+
 session = winrm.Session(target=endpoint,
                         auth=(username, password),
                         **arguments)
+
+
+winrm.Session._clean_error_msg = _clean_error_msg
 
 copy = CopyFiles(session)
 
 destination = args.destination
 filename = ntpath.basename(args.destination)
+if filename is None:
+    filename = os.path.basename(args.source)
 
 if filename in args.destination:
     destination = destination.replace(filename, '')
