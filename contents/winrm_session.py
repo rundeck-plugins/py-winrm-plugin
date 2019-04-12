@@ -5,6 +5,10 @@ try:
     from StringIO import StringIO
 except ImportError:
     from io import StringIO
+try:
+    from BytesIO import BytesIO
+except ImportError as e:
+    from io import BytesIO
 
 import protocol
 
@@ -87,8 +91,8 @@ class Response(object):
 class RunCommand:
     def __init__(self, session, shell, command ):
         self.stat, self.o_std, self.e_std = None, None, None
-        self.o_stream = StringIO()
-        self.e_stream = StringIO()
+        self.o_stream = BytesIO()
+        self.e_stream = BytesIO()
         self.session = session
         self.exec_command = command
         self.shell = shell

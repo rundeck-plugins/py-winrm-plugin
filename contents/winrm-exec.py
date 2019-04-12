@@ -87,6 +87,7 @@ if debug:
     print("username:" + username)
     print("nossl:" + str(nossl))
     print("diabletls12:" + str(diabletls12))
+    print("shell:" + shell)
     print("------------------------------------------")
 
 arguments = {}
@@ -120,18 +121,31 @@ sys.stderr = tsk.e_stream
 lastpos = 0
 lasterrorpos = 0
 
+charset = "Windows-1252"
+if "RD_NODE_CHARSET" in os.environ:
+    charset = os.getenv("RD_NODE_CHARSET")
+
 while True:
     t.join(.1)
 
     if sys.stdout.tell() != lastpos:
         sys.stdout.seek(lastpos)
-        realstdout.write(sys.stdout.read())
+        read=sys.stdout.read()
+        if isinstance(read, str):
+            realstdout.write(read)
+        else:
+            realstdout.write(read.decode(charset))
+
         lastpos = sys.stdout.tell()
 
     if sys.stderr.tell() != lasterrorpos:
         try:
             sys.stderr.seek(lasterrorpos)
-            realstderr.write(session._clean_error_msg(sys.stderr.read()))
+            errorread=session._clean_error_msg(sys.stderr.read())
+            if isinstance(errorread, str):
+                realstdout.write(errorread)
+            else:
+                realstdout.write(errorread.decode(charset))
             lasterrorpos = sys.stderr.tell()
         except Exception as e:
             traceback.print_exc(file=sys.stdout)
