@@ -1,10 +1,10 @@
-import winrm
-import argparse
 try:
 	import os; os.environ['PATH']
 except:
 	import os
 	os.environ.setdefault('PATH', '')
+import winrm
+import argparse
 import sys
 import base64
 import time
