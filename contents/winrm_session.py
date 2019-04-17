@@ -112,6 +112,5 @@ class RunCommand:
                 self.stat = response.status_code
 
         except Exception as e:
-            print(e)
             self.e_std = e
             self.stat=-1

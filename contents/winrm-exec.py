@@ -10,8 +10,23 @@ import winrm_session
 import threading
 import traceback
 import winrm
-
+import logging
+import colored_formatter
+from colored_formatter import ColoredFormatter
 requests.packages.urllib3.disable_warnings()
+
+log_level = 'INFO'
+if os.environ.get('RD_JOB_LOGLEVEL') == 'DEBUG':
+    log_level = 'DEBUG'
+else:
+    log_level = 'ERROR'
+
+console = logging.StreamHandler()
+console.setFormatter(ColoredFormatter(colored_formatter.format()))
+console.stream=sys.stdout
+log = logging.getLogger()
+log.addHandler(console)
+log.setLevel(log_level)
 
 parser = argparse.ArgumentParser(description='Run Bolt command.')
 parser.add_argument('hostname', help='the hostname')
@@ -62,33 +77,37 @@ exec_command = os.getenv("RD_EXEC_COMMAND")
 endpoint=transport+'://'+args.hostname+':'+port
 
 if "RD_OPTION_USERNAME" in os.environ and os.getenv("RD_OPTION_USERNAME"):
+    log.debug('Using option.username: %s' % os.environ['RD_OPTION_USERNAME'])
     #take user from job
     username = os.getenv("RD_OPTION_USERNAME").strip('\'')
 else:
     # take user from node
     if "RD_NODE_USERNAME" in os.environ and os.getenv("RD_NODE_USERNAME"):
+        log.debug('Using username from node definition: %s' % os.environ['RD_NODE_USERNAME'])
         username = os.getenv("RD_NODE_USERNAME").strip('\'')
     else:
         # take user from project
         if "RD_CONFIG_USERNAME" in os.environ and os.getenv("RD_CONFIG_USERNAME"):
+            log.debug('Using username from project definition: %s' % os.environ['RD_CONFIG_USERNAME'])
             username = os.getenv("RD_CONFIG_USERNAME").strip('\'')
 
 if "RD_OPTION_WINRMPASSWORD" in os.environ and os.getenv("RD_OPTION_WINRMPASSWORD"):
+    log.debug('Using option.winrmpassword')
     #take password from job
     password = os.getenv("RD_OPTION_WINRMPASSWORD").strip('\'')
 else:
     if "RD_CONFIG_PASSWORD_STORAGE_PATH" in os.environ:
+        log.debug('Using password from node')
         password = os.getenv("RD_CONFIG_PASSWORD_STORAGE_PATH")
 
-if debug:
-    print("------------------------------------------")
-    print("endpoint:" + endpoint)
-    print("authentication:" + authentication)
-    print("username:" + username)
-    print("nossl:" + str(nossl))
-    print("diabletls12:" + str(diabletls12))
-    print("shell:" + shell)
-    print("------------------------------------------")
+log.debug("------------------------------------------")
+log.debug("endpoint:" + endpoint)
+log.debug("authentication:" + authentication)
+log.debug("username:" + username)
+log.debug("nossl:" + str(nossl))
+log.debug("diabletls12:" + str(diabletls12))
+log.debug("shell:" + shell)
+log.debug("------------------------------------------")
 
 arguments = {}
 arguments["transport"] = authentication

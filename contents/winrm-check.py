@@ -8,6 +8,23 @@ import sys
 import argparse
 import requests.packages.urllib3
 requests.packages.urllib3.disable_warnings()
+import logging
+import colored_formatter
+from colored_formatter import ColoredFormatter
+
+log_level = 'INFO'
+if os.environ.get('RD_JOB_LOGLEVEL') == 'DEBUG':
+    log_level = 'DEBUG'
+else:
+    log_level = 'ERROR'
+
+console = logging.StreamHandler()
+console.setFormatter(ColoredFormatter(colored_formatter.format()))
+console.stream=sys.stdout
+
+log = logging.getLogger()
+log.addHandler(console)
+log.setLevel(log_level)
 
 parser = argparse.ArgumentParser(description='Run Bolt command.')
 parser.add_argument('--username', help='the username')
@@ -18,7 +35,7 @@ parser.add_argument('--transport', help='transport',default="http")
 parser.add_argument('--port', help='port',default="5985")
 parser.add_argument('--nossl', help='nossl',default="False")
 parser.add_argument('--diabletls12', help='diabletls12',default="False")
-parser.add_argument('--debug', help='nossl',default="False")
+parser.add_argument('--debug', help='debug',default="False")
 parser.add_argument('--certpath', help='certpath')
 
 args = parser.parse_args()
@@ -85,17 +102,17 @@ if os.getenv("RD_JOB_LOGLEVEL") == "DEBUG":
 
 endpoint=transport+'://'+hostname+':'+port
 
-if(debug):
-    print("------------------------------------------")
-    print("endpoint:" +endpoint)
-    print("authentication:" +authentication)
-    print("username:" +username)
-    print("nossl:" + str(nossl))
-    print("diabletls12:" + str(diabletls12))
-    print("transport:" + transport)
-    if(certpath):
-        print("certpath:" + certpath)
-    print("------------------------------------------")
+log.debug("------------------------------------------")
+log.debug("endpoint:" + endpoint)
+log.debug("authentication:" + authentication)
+log.debug("username:" + username)
+log.debug("nossl:" + str(nossl))
+log.debug("transport:" + str(transport))
+log.debug("diabletls12:" + str(diabletls12))
+if(certpath):
+    log.debug("certpath:" + certpath)
+log.debug("------------------------------------------")
+
 
 arguments={}
 arguments["transport"] = authentication

@@ -1,0 +1,30 @@
+version: '3'
+
+services:
+  rundeck:
+    hostname: rundeck
+    build:
+      context: rundeck
+      args:
+        PYTHON_VERSION: "3.7.3"
+    environment:
+    - RUNDECK_GRAILS_URL=http://localhost:4441
+    ports:
+    - "4441:4440"
+    volumes:
+      - ${PWD}/resources:/home/rundeck/resources
+  rundeck-ops:
+    build:
+      context: rundeck-ops
+    links:
+      - rundeck
+    environment:
+      - RUNDECK_URL=http://localhost:4441
+      - RUNDECK_NODE_URL=http://rundeck:4440
+      - RUNDECK_USER=admin
+      - RUNDECK_PASSWORD=admin
+      # import projects
+      - CONFIG_SCRIPT_POSTSTART=scripts/import_project.sh
+      #- PROJECTS_LIST=WINRM-DEMO
+    volumes:
+      - ${PWD}/projects:/projects

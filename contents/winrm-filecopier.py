@@ -13,7 +13,22 @@ import requests.packages.urllib3
 import logging
 import ntpath
 import xml.etree.ElementTree as ET
+import colored_formatter
+from colored_formatter import ColoredFormatter
 
+log_level = 'INFO'
+if os.environ.get('RD_JOB_LOGLEVEL') == 'DEBUG':
+    log_level = 'DEBUG'
+else:
+    log_level = 'ERROR'
+
+console = logging.StreamHandler()
+console.setFormatter(ColoredFormatter(colored_formatter.format()))
+console.stream=sys.stdout
+
+log = logging.getLogger()
+log.addHandler(console)
+log.setLevel(log_level)
 
 def _clean_error_msg(self, msg):
     """converts a Powershell CLIXML message to a more human readable string

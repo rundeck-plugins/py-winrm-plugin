@@ -106,3 +106,7 @@ If the result is Restricted, please run the following command:
 ```
 Set-ExecutionPolicy -ExecutionPolicy Unrestricted
 ```
+
+
+## Docker example
+Check these [instructions](docker/README.md) for docker test 
