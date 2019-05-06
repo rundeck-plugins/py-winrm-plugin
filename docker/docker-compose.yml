@@ -24,7 +24,8 @@ services:
       - RUNDECK_USER=admin
       - RUNDECK_PASSWORD=admin
       # import projects
-      - CONFIG_SCRIPT_POSTSTART=scripts/import_project.sh
+      - CONFIG_SCRIPT_POSTSTART=scripts/import_project.sh,scripts/import_keys.sh
       #- PROJECTS_LIST=WINRM-DEMO
     volumes:
       - ${PWD}/projects:/projects
+      - ${PWD}/storage:/storage

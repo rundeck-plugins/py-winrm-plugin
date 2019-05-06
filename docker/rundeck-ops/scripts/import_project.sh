@@ -12,9 +12,6 @@ shopt -u nullglob
 
 echo "There are ${#ARCHIVES[*]} project archives to import"
 
-#default rundeck user password for key storage
-echo "rundeck" > tmp.password
-
 for file in "${ARCHIVES[@]}"
 do
 	echo "Importing archive file $file ..."

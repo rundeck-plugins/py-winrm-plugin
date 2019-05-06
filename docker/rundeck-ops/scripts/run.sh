@@ -11,7 +11,7 @@ run_helpers() {
           continue
       }
       echo "### applying $helper script: $script"
-      . "$script"
+      bash "$script"
   done
 }
 
@@ -68,5 +68,6 @@ then
 else
   echo "### Post start config not set. skipping..."
 fi
+
 
 exit 0

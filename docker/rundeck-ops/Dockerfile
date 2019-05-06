@@ -15,7 +15,8 @@ RUN apt-get -y update && \
         iputils-ping \
         net-tools \
         apt-transport-https \
-        git
+        git  \
+        jq
 
 ## Install Java
 RUN \

@@ -13,6 +13,7 @@ RUN apt-get -y update && \
     netcat-traditional \
     unzip \
     zip \
+    vim \
     jq \
     sysstat
 

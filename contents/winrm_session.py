@@ -67,8 +67,8 @@ def _clean_error_msg(self, msg):
             # if any of the above fails, the msg was not true xml
             # print a warning and return the orignal string
             # TODO do not print, raise user defined error instead
-            print("Warning: there was a problem converting the Powershell"
-                  " error message: %s" % (e))
+            # print("Warning: there was a problem converting the Powershell")
+            ignore_error = True
         else:
             # if new_msg was populated, that's our error message
             # otherwise the original error message will be used
