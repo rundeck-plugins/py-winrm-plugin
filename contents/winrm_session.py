@@ -37,7 +37,7 @@ def run_ps(self, script, out_stream=None, err_stream=None):
     encoded script command
     """
     # must use utf16 little endian on windows
-    encoded_ps = b64encode(script.encode('utf_16_le')).decode()
+    encoded_ps = b64encode(script.encode('utf_16_le')).decode('ascii')
     rs = self.run_cmd('powershell -encodedcommand {0}'.format(encoded_ps),out_stream=out_stream, err_stream=err_stream)
 
     return rs
@@ -46,7 +46,7 @@ def run_ps(self, script, out_stream=None, err_stream=None):
 def _clean_error_msg(self, msg):
     #data=""
     if isinstance(msg, bytes):
-        msg = msg.decode('utf-8')
+        msg = msg.decode('utf-8', errors="ignore")
 
     if msg.startswith("#< CLIXML") or "<Objs Version=" in msg or "-1</PI><PC>" in msg:
         # for proper xml, we need to remove the CLIXML part

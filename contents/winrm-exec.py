@@ -162,9 +162,9 @@ while True:
             sys.stderr.seek(lasterrorpos)
             errorread=session._clean_error_msg(sys.stderr.read())
             if isinstance(errorread, str):
-                realstdout.write(errorread)
+                realstderr.write(errorread)
             else:
-                realstdout.write(errorread.decode(charset))
+                realstderr.write(errorread.decode(charset))
             lasterrorpos = sys.stderr.tell()
         except Exception as e:
             traceback.print_exc(file=sys.stdout)
@@ -178,7 +178,7 @@ sys.stdout = realstdout
 sys.stderr = realstderr
 
 if tsk.e_std:
-    sys.stderr.write("Execution finished with the following error:\n %s" % tsk.e_std)
+    sys.stderr.write("Execution finished with the following error")
     sys.exit(1)
 else:
     sys.exit(tsk.stat)
