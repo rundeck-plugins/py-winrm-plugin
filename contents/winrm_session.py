@@ -1,5 +1,4 @@
 from __future__ import unicode_literals
-from base64 import b64encode
 import xml.etree.ElementTree as ET
 try:
     from StringIO import StringIO
@@ -11,16 +10,39 @@ except ImportError as e:
     from io import BytesIO
 
 import protocol
+import winrm
+import base64
+import sys
+import types
+
+PY2 = sys.version_info[0] == 2
+PY3 = sys.version_info[0] == 3
+PY34 = sys.version_info[0:2] >= (3, 4)
+
+if PY3:
+    string_types = str,
+    integer_types = int,
+    class_types = type,
+    text_type = str
+    binary_type = bytes
+
+    MAXSIZE = sys.maxsize
+else:
+    string_types = basestring,
+    integer_types = (int, long)
+    class_types = (type, types.ClassType)
+    text_type = unicode
+    binary_type = str
 
 
 # TODO: this PR https://github.com/diyan/pywinrm/pull/55 will add this fix.
 # when this PR is merged, this won't be needed anymore
 def run_cmd(self, command, args=(), out_stream=None, err_stream=None):
-
     self.protocol.get_command_output = protocol.get_command_output
+    winrm.Session._clean_error_msg = self._clean_error_msg
 
     # TODO optimize perf. Do not call open/close shell every time
-    shell_id = self.protocol.open_shell()
+    shell_id = self.protocol.open_shell(codepage=65001)
     command_id = self.protocol.run_command(shell_id, command, args)
     rs = Response(self.protocol.get_command_output(self.protocol, shell_id, command_id, out_stream, err_stream))
 
@@ -36,8 +58,8 @@ def run_ps(self, script, out_stream=None, err_stream=None):
     """base64 encodes a Powershell script and executes the powershell
     encoded script command
     """
-    # must use utf16 little endian on windows
-    encoded_ps = b64encode(script.encode('utf_16_le')).decode('ascii')
+    script = to_text(script)
+    encoded_ps = base64.b64encode(script.encode('utf_16_le')).decode('ascii')
     rs = self.run_cmd('powershell -encodedcommand {0}'.format(encoded_ps),out_stream=out_stream, err_stream=err_stream)
 
     return rs
@@ -45,8 +67,7 @@ def run_ps(self, script, out_stream=None, err_stream=None):
 
 def _clean_error_msg(self, msg):
     #data=""
-    if isinstance(msg, bytes):
-        msg = msg.decode('utf-8', errors="ignore")
+    msg = to_text(msg)
 
     if msg.startswith("#< CLIXML") or "<Objs Version=" in msg or "-1</PI><PC>" in msg:
         # for proper xml, we need to remove the CLIXML part
@@ -114,3 +135,23 @@ class RunCommand:
         except Exception as e:
             self.e_std = e
             self.stat=-1
+
+
+def to_text(obj, encoding='utf-8', errors="ignore"):
+    if isinstance(obj, text_type):
+        return obj
+
+    if isinstance(obj, binary_type):
+        return obj.decode(encoding, errors)
+
+
+def to_bytes(obj, encoding='utf-8', errors="ignore"):
+    if isinstance(obj, binary_type):
+        return obj
+
+    if isinstance(obj, text_type):
+        try:
+            # Try this first as it's the fastest
+            return obj.encode(encoding, errors)
+        except UnicodeEncodeError:
+            raise

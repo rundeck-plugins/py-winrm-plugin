@@ -8,7 +8,6 @@ import sys
 import requests.packages.urllib3
 import winrm_session
 import threading
-import traceback
 import winrm
 import logging
 import colored_formatter
@@ -140,7 +139,7 @@ sys.stderr = tsk.e_stream
 lastpos = 0
 lasterrorpos = 0
 
-charset = "Windows-1252"
+charset = "utf-8"
 if "RD_NODE_CHARSET" in os.environ:
     charset = os.getenv("RD_NODE_CHARSET")
 
@@ -157,18 +156,6 @@ while True:
 
         lastpos = sys.stdout.tell()
 
-    if sys.stderr.tell() != lasterrorpos:
-        try:
-            sys.stderr.seek(lasterrorpos)
-            errorread=session._clean_error_msg(sys.stderr.read())
-            if isinstance(errorread, str):
-                realstderr.write(errorread)
-            else:
-                realstderr.write(errorread.decode(charset))
-            lasterrorpos = sys.stderr.tell()
-        except Exception as e:
-            traceback.print_exc(file=sys.stdout)
-
     if not t.is_alive():
         break
 
@@ -178,7 +165,8 @@ sys.stdout = realstdout
 sys.stderr = realstderr
 
 if tsk.e_std:
-    sys.stderr.write("Execution finished with the following error")
+    log.error("Execution finished with the following error")
+    log.error(tsk.e_std)
     sys.exit(1)
 else:
     sys.exit(tsk.stat)
