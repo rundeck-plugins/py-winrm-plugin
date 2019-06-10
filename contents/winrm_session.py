@@ -9,8 +9,12 @@ try:
 except ImportError as e:
     from io import BytesIO
 
-import protocol
-import winrm
+try:
+    import protocol
+    import winrm
+except ImportError:
+    pass
+
 import base64
 import sys
 import types

@@ -32,18 +32,19 @@ RUN apt-get install libssl-dev openssl gcc make -y && \
     make && \
     make install
 
-
 ENV PATH="/opt/Python-${PYTHON_VERSION}:$PATH"
 
 RUN curl https://bootstrap.pypa.io/get-pip.py -o get-pip.py
 RUN python get-pip.py
 
+RUN apt-get install -y gcc python-dev libkrb5-dev krb5-user
 ## Install python winrm
 RUN python -m pip install --upgrade pip && \
     python -m pip install setuptools --force --upgrade && \
     python -m pip install requests urllib3 pywinrm && \
-    python -m pip install pywinrm[credssp]
-
+    python -m pip install pywinrm[credssp] && \
+    python -m pip install pywinrm[kerberos] && \
+    python -m pip install pexpect
 
 #set rundeck password
 RUN echo 'rundeck:rundeck' | chpasswd
@@ -55,8 +56,10 @@ ENV RDECK_BASE=/home/rundeck \
 ENV PATH="/opt/Python-${PYTHON_VERSION}:$PATH"
 
 RUN mkdir data demo-projects
-COPY --chown=rundeck:rundeck remco /etc/remco
-COPY --chown=rundeck:rundeck ./plugins ./libext
+
+COPY --chown=root:root ./config/krb5.conf /etc/krb5.conf
+COPY --chown=rundeck:root remco /etc/remco
+COPY --chown=rundeck:root ./plugins ./libext
 
 VOLUME ["/home/rundeck/server/data"]
 
