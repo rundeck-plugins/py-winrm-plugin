@@ -1,4 +1,3 @@
-import winrm
 try:
 	import os; os.environ['PATH']
 except:
@@ -6,11 +5,79 @@ except:
 	os.environ.setdefault('PATH', '')
 import sys
 import argparse
-import requests.packages.urllib3
-requests.packages.urllib3.disable_warnings()
 import logging
 import colored_formatter
 from colored_formatter import ColoredFormatter
+import kerberosauth
+
+
+#checking and importing dependencies
+ISPY3 = sys.version_info[0] == 3
+WINRM_INSTALLED = False
+URLLIB_INSTALLED = False
+KRB_INSTALLED = False
+HAS_NTLM = False
+HAS_CREDSSP = False
+HAS_PEXPECT = False
+
+if ISPY3:
+    from inspect import getfullargspec as getargspec
+else:
+    from inspect import getargspec
+
+try:
+    import requests.packages.urllib3
+    requests.packages.urllib3.disable_warnings()
+    URLLIB_INSTALLED = True
+except ImportError as e:
+    URLLIB_INSTALLED = False
+
+try:
+    import winrm
+
+    WINRM_INSTALLED = True
+except ImportError as e:
+    WINRM_INSTALLED = False
+
+try:
+    from requests_kerberos import HTTPKerberosAuth, REQUIRED, OPTIONAL, DISABLED
+
+    KRB_INSTALLED = True
+except ImportError:
+    KRB_INSTALLED = False
+
+try:
+    from requests_ntlm import HttpNtlmAuth
+
+    HAS_NTLM = True
+except ImportError as ie:
+    HAS_NTLM = False
+
+try:
+    from requests_credssp import HttpCredSSPAuth
+
+    HAS_CREDSSP = True
+except ImportError as ie:
+    HAS_CREDSSP = False
+
+try:
+    import pexpect
+
+    if hasattr(pexpect, 'spawn'):
+        argspec = getargspec(pexpect.spawn.__init__)
+        if 'echo' in argspec.args:
+            HAS_PEXPECT = True
+except ImportError as e:
+    HAS_PEXPECT = False
+
+log_level = 'INFO'
+if os.environ.get('RD_JOB_LOGLEVEL') == 'DEBUG':
+    log_level = 'DEBUG'
+else:
+    log_level = 'ERROR'
+
+##end
+
 
 log_level = 'INFO'
 if os.environ.get('RD_JOB_LOGLEVEL') == 'DEBUG':
@@ -37,6 +104,8 @@ parser.add_argument('--nossl', help='nossl',default="False")
 parser.add_argument('--diabletls12', help='diabletls12',default="False")
 parser.add_argument('--debug', help='debug',default="False")
 parser.add_argument('--certpath', help='certpath')
+parser.add_argument('--krb5config', help='krb5config',default="/etc/krb5.conf")
+
 
 args = parser.parse_args()
 
@@ -44,6 +113,10 @@ hostname = None
 username = None
 password = None
 certpath = None
+forceTicket = False
+
+krb5config = None
+kinit = "kinit"
 
 if args.hostname:
     hostname = args.hostname
@@ -62,6 +135,9 @@ if args.transport:
 
 if args.port:
     port = args.port
+
+if args.krb5config:
+    krb5config = args.krb5config
 
 if args.nossl:
     if args.nossl == "true":
@@ -100,6 +176,13 @@ if not password:
 if os.getenv("RD_JOB_LOGLEVEL") == "DEBUG":
     debug = True
 
+if "RD_CONFIG_KRB5CONFIG" in os.environ:
+    krb5config = os.getenv("RD_CONFIG_KRB5CONFIG")
+
+if "RD_CONFIG_KINIT" in os.environ:
+    kinit = os.getenv("RD_CONFIG_KINIT")
+
+
 endpoint=transport+'://'+hostname+':'+port
 
 log.debug("------------------------------------------")
@@ -109,10 +192,38 @@ log.debug("username:" + username)
 log.debug("nossl:" + str(nossl))
 log.debug("transport:" + str(transport))
 log.debug("diabletls12:" + str(diabletls12))
+log.debug("krb5config:" + krb5config)
+log.debug("kinit command:" + kinit)
+
+
 if(certpath):
     log.debug("certpath:" + certpath)
 log.debug("------------------------------------------")
 
+
+if not URLLIB_INSTALLED:
+    log.error("request and urllib3 not installed, try: pip install requests &&  pip install urllib3")
+    sys.exit(1)
+
+if not WINRM_INSTALLED:
+    log.error("winrm not installed, try: pip install pywinrm")
+    sys.exit(1)
+
+if authentication == "kerberos" and not KRB_INSTALLED:
+    log.error("Kerberos not installed, try: pip install pywinrm[kerberos]")
+    sys.exit(1)
+
+if authentication == "kerberos" and not HAS_PEXPECT:
+    log.error("pexpect not installed, try: pip install pexpect")
+    sys.exit(1)
+
+if authentication == "credssp" and not HAS_CREDSSP:
+    log.error("CredSSP not installed, try: pip install pywinrm[credssp]")
+    sys.exit(1)
+
+if authentication == "ntlm" and not HAS_NTLM:
+    log.error("NTLM not installed, try: pip install requests_ntlm")
+    sys.exit(1)
 
 arguments={}
 arguments["transport"] = authentication
@@ -126,12 +237,17 @@ else:
 
 arguments["credssp_disable_tlsv1_2"] = diabletls12
 
+if authentication == "kerberos":
+    k5bConfig = kerberosauth.KerberosAuth(krb5config=krb5config, log=log, kinit_command=kinit,username=username, password=password)
+    k5bConfig.get_ticket()
+
 session = winrm.Session(target=endpoint,
                          auth=(username, password),
                          **arguments)
 
 exec_command = "ipconfig"
 result = session.run_cmd(exec_command)
+print(result.std_out)
 
 if(result.std_err):
     print("Connection with host %s fail" % hostname)

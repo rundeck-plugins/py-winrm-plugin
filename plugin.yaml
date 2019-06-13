@@ -26,7 +26,7 @@ providers:
         title: Authentication Type
         description: "Authentication Type"
         type: Select
-        values: "basic,credssp,ntlm"
+        values: "basic,credssp,ntlm,kerberos"
         default: "basic"
         required: true
         scope: Instance
@@ -115,6 +115,22 @@ providers:
           valueConversion: "STORAGE_PATH_AUTOMATIC_READ"
           storage-path-root: "keys"
           instance-scope-node-attribute: "winrm-password-storage-path"
+      - name: krb5config
+        title: krb5 Config File
+        description: "Path of krb5.conf file"
+        type: String
+        default: '/etc/krb5.conf'
+        required: false
+        renderingOptions:
+          groupName: Kerberos
+      - name: kinit
+        title: Kinit Command
+        description: "Kinit Command"
+        type: String
+        default: 'kinit'
+        required: false
+        renderingOptions:
+          groupName: Kerberos
   - name: WinRMcpPython
     title: WinRM Python File Copier
     description: Copying files to remote Windows computer
@@ -128,7 +144,7 @@ providers:
         title: Authentication Type
         description: "Authentication Type"
         type: Select
-        values: "basic,credssp,ntlm"
+        values: "basic,credssp,ntlm,kerberos"
         default: "basic"
         required: true
         scope: Instance
@@ -210,6 +226,22 @@ providers:
         name: debug
         title: Debug?
         description: 'Write debug messages'
+      - name: krb5config
+        title: krb5 Config File
+        description: "Path of krb5.conf file"
+        type: String
+        default: '/etc/krb5.conf'
+        required: false
+        renderingOptions:
+          groupName: Kerberos
+      - name: kinit
+        title: Kinit Command
+        description: "Kinit Command"
+        type: String
+        default: 'kinit'
+        required: false
+        renderingOptions:
+          groupName: Kerberos
   - name: WinRMCheck
     title: WinRM Check Step
     description: Check the connection with a remote node using winrm-python
@@ -228,7 +260,7 @@ providers:
         title: Authentication Type
         description: "Authentication Type"
         type: Select
-        values: "basic,credssp,ntlm,kerberos,ssl"
+        values: "basic,credssp,ntlm,kerberos"
         default: "basic"
         required: true
       - name: winrmtransport
@@ -281,3 +313,20 @@ providers:
         name: debug
         title: Debug?
         description: 'Write debug messages'
+      - name: krb5config
+        title: krb5 Config File
+        description: "Path of krb5.conf file"
+        type: String
+        default: '/etc/krb5.conf'
+        required: false
+        renderingOptions:
+          groupName: Kerberos
+      - name: kinit
+        title: Kinit Command
+        description: "Kinit Command"
+        type: String
+        default: 'kinit'
+        required: false
+        renderingOptions:
+          groupName: Kerberos
+

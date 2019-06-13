@@ -9,12 +9,80 @@ import sys
 import base64
 import time
 import common
-import requests.packages.urllib3
 import logging
 import ntpath
 import xml.etree.ElementTree as ET
 import colored_formatter
 from colored_formatter import ColoredFormatter
+import kerberosauth
+
+#checking and importing dependencies
+ISPY3 = sys.version_info[0] == 3
+WINRM_INSTALLED = False
+URLLIB_INSTALLED = False
+KRB_INSTALLED = False
+HAS_NTLM = False
+HAS_CREDSSP = False
+HAS_PEXPECT = False
+
+if ISPY3:
+    from inspect import getfullargspec as getargspec
+else:
+    from inspect import getargspec
+
+try:
+    import requests.packages.urllib3
+    requests.packages.urllib3.disable_warnings()
+    URLLIB_INSTALLED = True
+except ImportError as e:
+    URLLIB_INSTALLED = False
+
+try:
+    import winrm
+
+    WINRM_INSTALLED = True
+except ImportError as e:
+    WINRM_INSTALLED = False
+
+try:
+    from requests_kerberos import HTTPKerberosAuth, REQUIRED, OPTIONAL, DISABLED
+
+    KRB_INSTALLED = True
+except ImportError:
+    KRB_INSTALLED = False
+
+try:
+    from requests_ntlm import HttpNtlmAuth
+
+    HAS_NTLM = True
+except ImportError as ie:
+    HAS_NTLM = False
+
+try:
+    from requests_credssp import HttpCredSSPAuth
+
+    HAS_CREDSSP = True
+except ImportError as ie:
+    HAS_CREDSSP = False
+
+try:
+    import pexpect
+
+    if hasattr(pexpect, 'spawn'):
+        argspec = getargspec(pexpect.spawn.__init__)
+        if 'echo' in argspec.args:
+            HAS_PEXPECT = True
+except ImportError as e:
+    HAS_PEXPECT = False
+
+log_level = 'INFO'
+if os.environ.get('RD_JOB_LOGLEVEL') == 'DEBUG':
+    log_level = 'DEBUG'
+else:
+    log_level = 'ERROR'
+
+##end
+
 
 log_level = 'INFO'
 if os.environ.get('RD_JOB_LOGLEVEL') == 'DEBUG':
@@ -173,6 +241,9 @@ port = "5985"
 nossl = False
 debug = False
 diabletls12 = False
+kinit = None
+krb5config = None
+forceTicket = False
 
 if "RD_CONFIG_AUTHTYPE" in os.environ:
     authentication = os.getenv("RD_CONFIG_AUTHTYPE")
@@ -221,6 +292,12 @@ quiet = True
 if "RD_CONFIG_DEBUG" in os.environ:
     quiet = False
 
+if "RD_CONFIG_KRB5CONFIG" in os.environ:
+    krb5config = os.getenv("RD_CONFIG_KRB5CONFIG")
+
+if "RD_CONFIG_KINIT" in os.environ:
+    kinit = os.getenv("RD_CONFIG_KINIT")
+
 endpoint = transport+'://'+args.hostname+':'+port
 
 arguments = {}
@@ -234,6 +311,36 @@ else:
         arguments["ca_trust_path"] = certpath
 
 arguments["credssp_disable_tlsv1_2"] = diabletls12
+
+
+if not URLLIB_INSTALLED:
+    log.error("request and urllib3 not installed, try: pip install requests &&  pip install urllib3")
+    sys.exit(1)
+
+if not WINRM_INSTALLED:
+    log.error("winrm not installed, try: pip install pywinrm")
+    sys.exit(1)
+
+if authentication == "kerberos" and not KRB_INSTALLED:
+    log.error("Kerberos not installed, try: pip install pywinrm[kerberos]")
+    sys.exit(1)
+
+if authentication == "kerberos" and not HAS_PEXPECT:
+    log.error("pexpect not installed, try: pip install pexpect")
+    sys.exit(1)
+
+if authentication == "credssp" and not HAS_CREDSSP:
+    log.error("CredSSP not installed, try: pip install pywinrm[credssp]")
+    sys.exit(1)
+
+if authentication == "ntlm" and not HAS_NTLM:
+    log.error("NTLM not installed, try: pip install requests_ntlm")
+    sys.exit(1)
+
+if authentication == "kerberos":
+    k5bConfig = kerberosauth.KerberosAuth(krb5config=krb5config, log=log, kinit_command=kinit,username=username, password=password)
+    k5bConfig.get_ticket()
+
 
 session = winrm.Session(target=endpoint,
                         auth=(username, password),
