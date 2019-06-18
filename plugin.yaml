@@ -1,17 +1,9 @@
 name: py-winrm-plugin
-rundeckPluginVersion: 2.0
+rundeckPluginVersion: 1.2
 author: "@author@"
 date: "@date@"
 version: "@version@"
 url: "@url@"
-description: "Python WINRM node executor and file copier"
-rundeckCompatibilityVersion: "3.x"
-targetHostCompatibility: "all"
-license: "Apache 2.0"
-tags:
-    - script
-    - NodeExecutor
-    - FileCopier
 providers:
   - name: WinRMPython
     title: WinRM Node Executor Python

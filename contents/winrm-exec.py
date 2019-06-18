@@ -75,7 +75,7 @@ log_level = 'INFO'
 if os.environ.get('RD_JOB_LOGLEVEL') == 'DEBUG':
     log_level = 'DEBUG'
 else:
-    log_level = 'ERROR'
+    log_level = 'WARNING'
 
 ##end
 
@@ -263,8 +263,11 @@ sys.stderr.seek(0)
 sys.stdout = realstdout
 sys.stderr = realstderr
 
-if tsk.e_std:
-    log.error("Execution finished with the following error")
+if tsk.stat ==0 and tsk.e_std:
+    #printing sterr when the exit code is cero
+    log.warning(tsk.e_std)
+
+if tsk.stat !=0:
     log.error(tsk.e_std)
     sys.exit(1)
 else:
