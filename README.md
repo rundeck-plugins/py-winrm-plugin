@@ -6,7 +6,7 @@ This is a Rundeck Node Execution/ File Copier plugin that uses WinRM to connect 
 
 Download from the releases page and copy the py-winrm-plugin-X.X.X.zip to the libext/ directory for Rundeck.
 
-## Requierments
+## Requirements
 
 The plugin needs the python module **pywinrm**. It can be installed with the following command: ```pip install pywinrm``` 
 
