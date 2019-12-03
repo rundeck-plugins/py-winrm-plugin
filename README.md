@@ -13,7 +13,7 @@ Download from the releases page and copy the py-winrm-plugin-X.X.X.zip to the li
 * pywinrm
 * requests-kerberos and requests-credssp is optional
 
-It can be installed with the following command: `pip install pywinrm
+It can be installed with the following command: `pip install pywinrm` 
 
 For further information see: 
 [Python Winrm Requirements](https://github.com/diyan/pywinrm/#requirements)
