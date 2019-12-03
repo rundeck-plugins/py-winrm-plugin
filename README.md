@@ -19,7 +19,7 @@ For further information see:
 [Python Winrm Requirements](https://github.com/diyan/pywinrm/#requirements)
 
 * To install requests-kerberos [See](https://github.com/diyan/pywinrm/#to-use-kerberos-authentication-you-need-these-optional-dependencies)
-* To install requests-credssp [See](hhttps://github.com/diyan/pywinrm/#to-use-credssp-authentication-you-need-these-optional-dependencies)
+* To install requests-credssp  [See](https://github.com/diyan/pywinrm/#to-use-credssp-authentication-you-need-these-optional-dependencies)
 
 ## Configuration
 
