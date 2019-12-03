@@ -8,12 +8,18 @@ Download from the releases page and copy the py-winrm-plugin-X.X.X.zip to the li
 
 ## Requirements
 
-The plugin needs the python module **pywinrm**. It can be installed with the following command: ```pip install pywinrm``` 
+* Linux, Mac OS X or Windows
+* CPython 2.6-2.7, 3.3-3.5 or PyPy2
+* pywinrm
+* requests-kerberos and requests-credssp is optional
+
+It can be installed with the following command: `pip install pywinrm
 
 For further information see: 
-[https://pypi.python.org/pypi/pywinrm
-](https://pypi.python.org/pypi/pywinrm)
+[Python Winrm Requirements](https://github.com/diyan/pywinrm/#requirements)
 
+* To install requests-kerberos [See](https://github.com/diyan/pywinrm/#to-use-kerberos-authentication-you-need-these-optional-dependencies)
+* To install requests-credssp [See](hhttps://github.com/diyan/pywinrm/#to-use-credssp-authentication-you-need-these-optional-dependencies)
 
 ## Configuration
 
