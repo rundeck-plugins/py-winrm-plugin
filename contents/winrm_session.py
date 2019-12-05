@@ -18,6 +18,7 @@ except ImportError:
 import base64
 import sys
 import types
+import re
 
 PY2 = sys.version_info[0] == 2
 PY3 = sys.version_info[0] == 3
@@ -101,6 +102,14 @@ def _clean_error_msg(self, msg):
 
     return msg
 
+def _strip_namespace(self, xml):
+    """strips any namespaces from an xml string"""
+    value = to_bytes(xml)
+    p = re.compile(b"xmlns=*[\"\"][^\"\"]*[\"\"]")
+    allmatches = p.finditer(value)
+    for match in allmatches:
+        value = value.replace(match.group(), b"")
+    return value
 
 class Response(object):
     """Response from a remote command execution"""
@@ -159,3 +168,4 @@ def to_bytes(obj, encoding='utf-8', errors="ignore"):
             return obj.encode(encoding, errors)
         except UnicodeEncodeError:
             raise
+

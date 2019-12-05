@@ -226,6 +226,7 @@ session = winrm.Session(target=endpoint,
 winrm.Session.run_cmd = winrm_session.run_cmd
 winrm.Session.run_ps = winrm_session.run_ps
 winrm.Session._clean_error_msg = winrm_session._clean_error_msg
+winrm.Session._strip_namespace = winrm_session._strip_namespace
 
 tsk = winrm_session.RunCommand(session, shell, exec_command)
 t = threading.Thread(target=tsk.get_response)
