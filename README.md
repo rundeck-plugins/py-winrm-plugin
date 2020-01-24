@@ -107,7 +107,7 @@ $ pip install pexpect
 
 #### for RHEL/CentOS/etc:
 ```
-$ sudo yum install python-devel krb5-devel krb5-workstation
+$ sudo yum install python-devel krb5-devel krb5-workstation requests-kerberos
 $ pip install pywinrm[kerberos]
 $ pip install pexpect
 ```
