@@ -18,9 +18,9 @@ providers:
     description: Executing Scripts or Commands on remote Windows computer
     service: NodeExecutor
     plugin-type: script
-    script-interpreter: /bin/sh
-    script-file: wrapper.sh
-    script-args: winrm-exec.py ${node.hostname}
+    script-interpreter: ${config.interpreter} -u
+    script-file: winrm-exec.py
+    script-args: ${node.hostname}
     config:
       - name: interpreter
         title: Python Interpreter
@@ -143,9 +143,9 @@ providers:
     description: Copying files to remote Windows computer
     service: FileCopier
     plugin-type: script
-    script-interpreter: /bin/sh
-    script-file: wrapper.sh
-    script-args: winrm-filecopier.py ${node.hostname} ${file-copy.file} ${file-copy.destination}
+    script-interpreter: ${config.interpreter} -u
+    script-file: winrm-filecopier.py
+    script-args: ${node.hostname} ${file-copy.file} ${file-copy.destination}
     config:
       - name: interpreter
         title: Python Interpreter
@@ -261,9 +261,9 @@ providers:
     description: Check the connection with a remote node using winrm-python
     service: WorkflowStep
     plugin-type: script
-    script-interpreter: /bin/sh
-    script-file: wrapper.sh
-    script-args: winrm-check.py --username ${config.username} --hostname ${config.hostname} --password ${config.password_storage_path} --authentication ${config.authtype} --transport ${config.winrmtransport} --port ${config.winrmport} --nossl ${config.nossl} --debug ${config.debug} --certpath ${config.certpath}
+    script-interpreter: ${config.interpreter} -u
+    script-file: winrm-check.py
+    script-args: --username ${config.username} --hostname ${config.hostname} --password ${config.password_storage_path} --authentication ${config.authtype} --transport ${config.winrmtransport} --port ${config.winrmport} --nossl ${config.nossl} --debug ${config.debug} --certpath ${config.certpath}
     config:
       - name: interpreter
         title: Python Interpreter

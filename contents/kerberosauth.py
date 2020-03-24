@@ -45,12 +45,11 @@ class KerberosAuth(object):
         output = process.read()
         process.wait()
         self.log.debug("Exist status: %s" %process.exitstatus)
-        self.log.debug("kinit finish with message %s" %output)
 
         exitCode = process.exitstatus
 
         if exitCode != 0:
-            msg = "kinit failed %s" % output
+            msg = "kinit failed"
             self.log.error(msg)
             raise Exception(msg)
 
@@ -83,10 +82,9 @@ class KerberosAuth(object):
             process.expect(".*")
             output = process.read()
             process.wait()
-            if process.exitstatus!=0:
+            if process.exitstatus != 0:
                 return False
 
-            self.log.debug("klist result %s" % output)
             results = json.loads(output)
 
             for item in results:
