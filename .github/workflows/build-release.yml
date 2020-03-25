@@ -30,7 +30,7 @@ jobs:
         # Artifact name
         name: py-winrm-plugin-${{ steps.get_version.outputs.VERSION }}
         # Directory containing files to upload
-        path: build/libs/py-winrm-plugin-${{ steps.get_version.outputs.VERSION }}-plugin.zip
+        path: ./build/libs/py-winrm-plugin-${{ steps.get_version.outputs.VERSION }}-plugin.zip
     - name: Create Release
       id: create_release
       uses: actions/create-release@v1.0.0
