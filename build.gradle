@@ -4,7 +4,7 @@ buildscript {
     }
 }
 plugins {
-    id 'pl.allegro.tech.build.axion-release' version '1.7.0'
+    id 'pl.allegro.tech.build.axion-release' version '1.9.3'
 }
 
 ext.pluginName = 'Python Winrm Node Executor/File Copier Plugin'
@@ -34,6 +34,7 @@ scmVersion {
 }
 
 project.version = scmVersion.version
+
 ext.archiveFilename = ext.archivesBaseName + '-' + version 
 
 apply from: 'https://raw.githubusercontent.com/rundeck-plugins/build-zip/master/build.gradle'
