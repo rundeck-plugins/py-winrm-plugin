@@ -102,7 +102,7 @@ providers:
           instance-scope-node-attribute: "winrm-readtimeout"
       - name: operationtimeout
         title: operation timeout
-        description: "maximum allowed time in seconds for any single wsman HTTP operation (default 20). Note that operation timeouts while receiving output (the only wsman operation that should take any significant time, and where these timeouts are expected) will be silently retried indefinitely.."
+        description: "maximum allowed time in seconds for any single wsman HTTP operation (default 20). Note that operation timeouts while receiving output (the only wsman operation that should take any significant time, and where these timeouts are expected) will be silently retried indefinitely."
         type: String
         required: false
         scope: Instance

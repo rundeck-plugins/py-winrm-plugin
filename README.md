@@ -31,6 +31,10 @@ For further information see:
 * **WinRM Transport Protocol**: WinRM transport protocol (http or https). It can be overwriting at node level using `winrm-transport`
 * **WinRM Port**: WinRM port (Default: 5985/5986 for http/https). It can be overwriting at node level using `winrm-port`
 * **Shell**: Windows Shell interpreter (powershell o cmd).  It can be overwriting at node level using `winrm-shell`
+* **connect/read times out**: maximum seconds to wait before an HTTP connect/read times out (default 30). This value should be slightly higher than operation timeout, as the server can block *at least* that long.  
+It can be overwriting at node level using `winrm-readtimeout`
+* **operation timeout**: maximum allowed time in seconds for any single wsman HTTP operation (default 20). Note that operation timeouts while receiving output (the only wsman operation that should take any significant time, and where these timeouts are expected) will be silently retried indefinitely.
+It can be overwriting at node level using `winrm-operationtimeout`
 
 For Kerberos
 * **krb5 Config File**: path of the krb5.conf (default: /etc/krb5.conf)
