@@ -1,6 +1,11 @@
 from __future__ import unicode_literals
 import xml.etree.ElementTree as ET
 try:
+	import os; os.environ['PATH']
+except:
+	import os
+	os.environ.setdefault('PATH', '')
+try:
     from StringIO import StringIO
 except ImportError:
     from io import StringIO
@@ -46,8 +51,13 @@ def run_cmd(self, command, args=(), out_stream=None, err_stream=None):
     self.protocol.get_command_output = protocol.get_command_output
     winrm.Session._clean_error_msg = self._clean_error_msg
 
+    envs = {}
+    for a in os.environ:
+        if a.startswith('RD_'):
+           envs.update({a:os.getenv(a)})
+
     # TODO optimize perf. Do not call open/close shell every time
-    shell_id = self.protocol.open_shell(codepage=65001)
+    shell_id = self.protocol.open_shell(codepage=65001, env_vars=envs)
     command_id = self.protocol.run_command(shell_id, command, args)
     rs = Response(self.protocol.get_command_output(self.protocol, shell_id, command_id, out_stream, err_stream))
 
