@@ -5,7 +5,8 @@
 .gradle
 .idea
 /build/
-
+/docker/rundeck/plugins/py-winrm-plugin-*
+/docker/resources/*.xml
 # Ignore Gradle GUI config
 gradle-app.setting
 
