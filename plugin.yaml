@@ -91,6 +91,24 @@ providers:
         renderingOptions:
           groupName: Connection
           instance-scope-node-attribute: "winrm-certpath"
+      - name: readtimeout
+        title: connect/read times out
+        description: "maximum seconds to wait before an HTTP connect/read times out (default 30). This value should be slightly higher than operation timeout, as the server can block *at least* that long."
+        type: String
+        required: false
+        scope: Instance
+        renderingOptions:
+          groupName: Connection
+          instance-scope-node-attribute: "winrm-readtimeout"
+      - name: operationtimeout
+        title: operation timeout
+        description: "maximum allowed time in seconds for any single wsman HTTP operation (default 20). Note that operation timeouts while receiving output (the only wsman operation that should take any significant time, and where these timeouts are expected) will be silently retried indefinitely.."
+        type: String
+        required: false
+        scope: Instance
+        renderingOptions:
+          groupName: Connection
+          instance-scope-node-attribute: "winrm-operationtimeout"
       - name: shell
         title: Shell
         description: "Windows Shell interpreter"
