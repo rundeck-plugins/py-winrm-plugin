@@ -102,6 +102,8 @@ certpath = None
 krb5config = None
 kinit = None
 forceTicket = False
+readtimeout = None
+operationtimeout = None
 
 if "RD_CONFIG_AUTHTYPE" in os.environ:
     authentication = os.getenv("RD_CONFIG_AUTHTYPE")
@@ -132,6 +134,12 @@ if os.getenv("RD_JOB_LOGLEVEL") == "DEBUG":
 
 if "RD_CONFIG_CERTPATH" in os.environ:
     certpath = os.getenv("RD_CONFIG_CERTPATH")
+
+if "RD_CONFIG_READTIMEOUT" in os.environ:
+    readtimeout = os.getenv("RD_CONFIG_READTIMEOUT")
+
+if "RD_CONFIG_OPERATIONTIMEOUT" in os.environ:
+    operationtimeout = os.getenv("RD_CONFIG_OPERATIONTIMEOUT")
 
 exec_command = os.getenv("RD_EXEC_COMMAND") 
 
@@ -176,6 +184,10 @@ log.debug("diabletls12:" + str(diabletls12))
 log.debug("krb5config:" + krb5config)
 log.debug("kinit command:" + kinit)
 log.debug("shell:" + shell)
+log.debug("readtimeout:" + str(readtimeout))
+log.debug("operationtimeout:" + str(operationtimeout))
+
+
 
 log.debug("------------------------------------------")
 
@@ -212,6 +224,12 @@ else:
     if(transport == "https"):
         arguments["server_cert_validation"] = "validate"
         arguments["ca_trust_path"] = certpath
+
+if(readtimeout):
+    arguments["read_timeout_sec"] = readtimeout
+
+if(operationtimeout):
+    arguments["operation_timeout_sec"] = operationtimeout
 
 arguments["credssp_disable_tlsv1_2"] = diabletls12
 
