@@ -210,7 +210,7 @@ if not WINRM_INSTALLED:
     sys.exit(1)
 
 if authentication == "kerberos" and not KRB_INSTALLED:
-    log.error("Kerberos not installed, try: pip install pywinrm[kerberos]")
+    log.error("Kerberos not installed, try: pip install requests-kerberos")
     sys.exit(1)
 
 if authentication == "kerberos" and not HAS_PEXPECT:
