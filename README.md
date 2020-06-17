@@ -105,7 +105,7 @@ In resume, to use Kerberos authentication the following requirements are needed:
 ```
 $ sudo apt-get install python-dev libkrb5-dev
 $ pip install pywinrm[kerberos]
-* pip install requests-kerberos
+$ pip install requests-kerberos
 $ pip install pexpect
 ```
 
@@ -113,6 +113,7 @@ $ pip install pexpect
 ```
 $ sudo yum install python-devel krb5-devel krb5-workstation requests-kerberos
 $ pip install pywinrm[kerberos]
+$ pip install requests-kerberos
 $ pip install pexpect
 ```
 
