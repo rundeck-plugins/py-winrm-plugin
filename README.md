@@ -43,7 +43,6 @@ For Kerberos
 ## Node definition example
 
 
-
 ```
 <node name="Hostname" 
       description="Windows Server" 
@@ -97,7 +96,7 @@ In resume, to use Kerberos authentication the following requirements are needed:
 * kerberos client installed
 * domain set on krb5.conf file (default /etc/krb5.conf)
 * python `pexpect` library
-* python `kerberos` library
+* python `kerberos` library 
 * Kerberos authentication enabled on remote windows node (WINRM settings)
 
 ### Install Basic dependencies
@@ -106,6 +105,7 @@ In resume, to use Kerberos authentication the following requirements are needed:
 ```
 $ sudo apt-get install python-dev libkrb5-dev
 $ pip install pywinrm[kerberos]
+* pip install requests-kerberos
 $ pip install pexpect
 ```
 
