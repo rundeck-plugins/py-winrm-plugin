@@ -24,7 +24,7 @@ For further information see:
 ## Configuration
 
 * **Authentication Type**: The authentication type used for the connection: basic, ntlm, credssp, kerberos. It can be overwriting at node level using `winrm-authtype`
-* **Username**: (Optional) Username that will connect to the remote node. This value can be set also at node level or as a job input option (with the name `username)
+* **Username**: (Optional) Username that will connect to the remote node. This value can be set also at node level or as a job input option (with the name `username`)
 * **Password Storage Path**: Key storage path of the window's user password. It can be overwriting at node level using `winrm-password-storage-path`. 
   Also the password can be overwritten on the job level using an input secure option called `winrmpassword`
 * **No SSL Verification**: When set to true SSL certificate validation is not performed.  It can be overwriting at node level using `winrm-nossl`
@@ -129,6 +129,39 @@ This plugin include a connectivity test script that can be used as a Workflow St
 
 ```
 python contents/winrm-check.py --username <username> --hostname <windows-server> --password <password>
+```
+
+## Running Scripts
+
+Form version 2.0.8, when you run a script it won't fail if there are errors inside. To make the step fail you will need to control the error.
+Previous versions checked if there were any values on stderr to make the script fail. But that produced others bugs when a script returned a warning (script with a warning failed)
+
+There are two options now to make the script fails:
+
+* Option 1: check the last exit code
+```
+# some code with error
+get-services
+
+# if last exit code is not zero, return a value 
+if ($lastExitCode -ne "0") {
+    exit 1
+}
+
+
+```
+
+* Option 2: add a try/catch block
+
+```
+try {
+    # some code with error
+    get-services
+}
+catch {
+    Write-Error $_
+    exit 1
+}
 ```
 
 ## Troubleshooting
