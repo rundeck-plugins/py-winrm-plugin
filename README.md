@@ -31,6 +31,7 @@ For further information see:
 * **WinRM Transport Protocol**: WinRM transport protocol (http or https). It can be overwriting at node level using `winrm-transport`
 * **WinRM Port**: WinRM port (Default: 5985/5986 for http/https). It can be overwriting at node level using `winrm-port`
 * **Shell**: Windows Shell interpreter (powershell o cmd).  It can be overwriting at node level using `winrm-shell`
+* **Script Exit Behaviour**: Script Exit Behaviour. console: if the std error console has data (default), the process fails. exitcode: script won't fail by default, the user must control the exit code (eg: using try/catch block). See https://github.com/rundeck-plugins/py-winrm-plugin/tree/master#running-scripts
 * **connect/read times out**: maximum seconds to wait before an HTTP connect/read times out (default 30). This value should be slightly higher than operation timeout, as the server can block *at least* that long.  
 It can be overwriting at node level using `winrm-readtimeout`
 * **operation timeout**: maximum allowed time in seconds for any single wsman HTTP operation (default 20). Note that operation timeouts while receiving output (the only wsman operation that should take any significant time, and where these timeouts are expected) will be silently retried indefinitely.
@@ -133,10 +134,15 @@ python contents/winrm-check.py --username <username> --hostname <windows-server>
 
 ## Running Scripts
 
-Form version 2.0.8, when you run a script it won't fail if there are errors inside. To make the step fail you will need to control the error.
-Previous versions checked if there were any values on stderr to make the script fail. But that produced others bugs when a script returned a warning (script with a warning failed)
+From version 2.0.8, we added a config option to control the way a script finishes (about success/failure status)
 
-There are two options now to make the script fails:
+The option called `Script Exit Behaviour` defines the behavior of scripts step status.
+
+* **console**:  This is the default behavior and the way previous versions work. The script will fail if there are any logs in the error console (stderr).
+In some cases, a script can return a warning which will produce that the step fails.
+
+* **exitcode**:  This is the new approach. The script step will fail if the exit code is set manually.
+So if you need to control errors, you will need to find the way to capture the exit code of your commands inside the script, for example:
 
 * Option 1: check the last exit code
 ```
@@ -147,7 +153,6 @@ get-services
 if ($lastExitCode -ne "0") {
     exit 1
 }
-
 
 ```
 

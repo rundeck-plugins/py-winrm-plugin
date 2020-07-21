@@ -120,6 +120,15 @@ providers:
         renderingOptions:
           groupName: Connection
           instance-scope-node-attribute: "winrm-shell"
+      - name: exitbehaviour
+        title: Script Exit Behaviour
+        description: "Script Exit Behaviour. console: if the std error console has data (default), the process fails. exitcode: script won't fail by default, the user must control the exit code (eg: using try/catch block). See https://github.com/rundeck-plugins/py-winrm-plugin/tree/master#running-scripts"
+        type: Select
+        values: "console, exitcode"
+        default: "console"
+        required: true
+        renderingOptions:
+          groupName: Connection
       - name: username
         title: Username
         type: String
