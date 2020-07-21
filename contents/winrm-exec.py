@@ -12,6 +12,17 @@ import colored_formatter
 import kerberosauth
 from colored_formatter import ColoredFormatter
 
+
+class SuppressFilter(logging.Filter):
+    def filter(self, record):
+        return 'wsman' not in record.getMessage()
+
+try:
+    from urllib3.connectionpool import log
+    log.addFilter(SuppressFilter())
+except:
+    pass
+
 #checking and importing dependencies
 ISPY3 = sys.version_info[0] == 3
 WINRM_INSTALLED = False
@@ -71,11 +82,10 @@ try:
 except ImportError as e:
     HAS_PEXPECT = False
 
-log_level = 'INFO'
 if os.environ.get('RD_JOB_LOGLEVEL') == 'DEBUG':
     log_level = 'DEBUG'
 else:
-    log_level = 'ERROR'
+    log_level = 'INFO'
 
 ##end
 
@@ -104,6 +114,8 @@ kinit = None
 forceTicket = False
 readtimeout = None
 operationtimeout = None
+forcefail = False
+exitBehaviour = "console"
 
 if "RD_CONFIG_AUTHTYPE" in os.environ:
     authentication = os.getenv("RD_CONFIG_AUTHTYPE")
@@ -128,6 +140,9 @@ if "RD_CONFIG_DISABLETLS12" in os.environ:
 
 if "RD_CONFIG_SHELL" in os.environ:
     shell = os.getenv("RD_CONFIG_SHELL")
+
+if "RD_CONFIG_EXITBEHAVIOUR" in os.environ:
+    exitBehaviour = os.getenv("RD_CONFIG_EXITBEHAVIOUR")
 
 if os.getenv("RD_JOB_LOGLEVEL") == "DEBUG":
     debug = True
@@ -186,6 +201,8 @@ log.debug("kinit command:" + kinit)
 log.debug("shell:" + shell)
 log.debug("readtimeout:" + str(readtimeout))
 log.debug("operationtimeout:" + str(operationtimeout))
+log.debug("exit Behaviour:" + exitBehaviour)
+
 
 
 
@@ -282,9 +299,21 @@ sys.stderr.seek(0)
 sys.stdout = realstdout
 sys.stderr = realstderr
 
-if tsk.e_std:
-    log.error("Execution finished with the following error")
-    log.error(tsk.e_std)
-    sys.exit(1)
+if exitBehaviour == 'console':
+    if tsk.e_std:
+        log.error("Execution finished with the following error")
+        log.error(tsk.e_std)
+        sys.exit(1)
+    else:
+        sys.exit(tsk.stat)
 else:
-    sys.exit(tsk.stat)
+    if tsk.stat != 0:
+        log.error("Execution finished with the following exit code: {} ".format(tsk.stat))
+        log.error(tsk.stat)
+        log.error(tsk.e_std)
+
+        sys.exit(tsk.stat)
+    else:
+        if tsk.e_std:
+            log.warning(tsk.e_std)
+        sys.exit(tsk.stat)

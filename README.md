@@ -24,13 +24,14 @@ For further information see:
 ## Configuration
 
 * **Authentication Type**: The authentication type used for the connection: basic, ntlm, credssp, kerberos. It can be overwriting at node level using `winrm-authtype`
-* **Username**: (Optional) Username that will connect to the remote node. This value can be set also at node level or as a job input option (with the name `username)
+* **Username**: (Optional) Username that will connect to the remote node. This value can be set also at node level or as a job input option (with the name `username`)
 * **Password Storage Path**: Key storage path of the window's user password. It can be overwriting at node level using `winrm-password-storage-path`. 
   Also the password can be overwritten on the job level using an input secure option called `winrmpassword`
 * **No SSL Verification**: When set to true SSL certificate validation is not performed.  It can be overwriting at node level using `winrm-nossl`
 * **WinRM Transport Protocol**: WinRM transport protocol (http or https). It can be overwriting at node level using `winrm-transport`
 * **WinRM Port**: WinRM port (Default: 5985/5986 for http/https). It can be overwriting at node level using `winrm-port`
 * **Shell**: Windows Shell interpreter (powershell o cmd).  It can be overwriting at node level using `winrm-shell`
+* **Script Exit Behaviour**: Script Exit Behaviour. console: if the std error console has data (default), the process fails. exitcode: script won't fail by default, the user must control the exit code (eg: using try/catch block). See https://github.com/rundeck-plugins/py-winrm-plugin/tree/master#running-scripts
 * **connect/read times out**: maximum seconds to wait before an HTTP connect/read times out (default 30). This value should be slightly higher than operation timeout, as the server can block *at least* that long.  
 It can be overwriting at node level using `winrm-readtimeout`
 * **operation timeout**: maximum allowed time in seconds for any single wsman HTTP operation (default 20). Note that operation timeouts while receiving output (the only wsman operation that should take any significant time, and where these timeouts are expected) will be silently retried indefinitely.
@@ -129,6 +130,43 @@ This plugin include a connectivity test script that can be used as a Workflow St
 
 ```
 python contents/winrm-check.py --username <username> --hostname <windows-server> --password <password>
+```
+
+## Running Scripts
+
+From version 2.0.8, we added a config option to control the way a script finishes (about success/failure status)
+
+The option called `Script Exit Behaviour` defines the behavior of scripts step status.
+
+* **console**:  This is the default behavior and the way previous versions work. The script will fail if there are any logs in the error console (stderr).
+In some cases, a script can return a warning which will produce that the step fails.
+
+* **exitcode**:  This is the new approach. The script step will fail if the exit code is set manually.
+So if you need to control errors, you will need to find the way to capture the exit code of your commands inside the script, for example:
+
+* Option 1: check the last exit code
+```
+# some code with error
+get-services
+
+# if last exit code is not zero, return a value 
+if ($lastExitCode -ne "0") {
+    exit 1
+}
+
+```
+
+* Option 2: add a try/catch block
+
+```
+try {
+    # some code with error
+    get-services
+}
+catch {
+    Write-Error $_
+    exit 1
+}
 ```
 
 ## Troubleshooting

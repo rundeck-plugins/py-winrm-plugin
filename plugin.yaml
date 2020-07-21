@@ -31,7 +31,7 @@ providers:
         scope: Instance
       - name: authtype
         title: Authentication Type
-        description: "Authentication Type"
+        description: "Authentication Type. It can be overwriting at node level using `winrm-authtype`"
         type: Select
         values: "basic,credssp,ntlm,kerberos"
         default: "basic"
@@ -42,7 +42,7 @@ providers:
           instance-scope-node-attribute: "winrm-authtype"
       - name: nossl
         title: No SSL Verification
-        description: "When set to true ssl certificate validation is not performed"
+        description: "When set to true ssl certificate validation is not performed. It can be overwriting at node level using `winrm-nossl`"
         type: Select
         values: "true, false"
         default: "false"
@@ -63,7 +63,7 @@ providers:
           instance-scope-node-attribute: "winrm-disable-tls-12"
       - name: winrmtransport
         title: WinRM Transport Protocol
-        description: "WinRM transport protocol (http or https)"
+        description: "WinRM transport protocol (http or https). It can be overwriting at node level using `winrm-transport`"
         type: Select
         default: "http"
         values: "http, https"
@@ -74,7 +74,7 @@ providers:
           instance-scope-node-attribute: "winrm-transport"
       - name: winrmport
         title: WinRM Port
-        description: "WinRM port (Default: 5985/5986 for http/https)"
+        description: "WinRM port (Default: 5985/5986 for http/https). It can be overwriting at node level using `winrm-port`"
         type: String
         default: "5985"
         required: true
@@ -84,7 +84,7 @@ providers:
           instance-scope-node-attribute: "winrm-port"
       - name: certpath
         title: Certificate Path
-        description: "Certificate path for ssl verification"
+        description: "Certificate path for ssl verification. It can be overwriting at node level using `winrm-certpath`"
         type: String
         required: false
         scope: Instance
@@ -93,7 +93,7 @@ providers:
           instance-scope-node-attribute: "winrm-certpath"
       - name: readtimeout
         title: connect/read times out
-        description: "maximum seconds to wait before an HTTP connect/read times out (default 30). This value should be slightly higher than operation timeout, as the server can block *at least* that long."
+        description: "maximum seconds to wait before an HTTP connect/read times out (default 30). This value should be slightly higher than operation timeout, as the server can block *at least* that long. It can be overwriting at node level using `winrm-readtimeout`"
         type: String
         required: false
         scope: Instance
@@ -102,7 +102,7 @@ providers:
           instance-scope-node-attribute: "winrm-readtimeout"
       - name: operationtimeout
         title: operation timeout
-        description: "maximum allowed time in seconds for any single wsman HTTP operation (default 20). Note that operation timeouts while receiving output (the only wsman operation that should take any significant time, and where these timeouts are expected) will be silently retried indefinitely."
+        description: "maximum allowed time in seconds for any single wsman HTTP operation (default 20). Note that operation timeouts while receiving output (the only wsman operation that should take any significant time, and where these timeouts are expected) will be silently retried indefinitely. It can be overwriting at node level using `winrm-operationtimeout`"
         type: String
         required: false
         scope: Instance
@@ -111,7 +111,7 @@ providers:
           instance-scope-node-attribute: "winrm-operationtimeout"
       - name: shell
         title: Shell
-        description: "Windows Shell interpreter"
+        description: "Windows Shell interpreter. It can be overwriting at node level using `winrm-shell`"
         type: Select
         values: "cmd, powershell"
         default: 'powershell'
@@ -120,6 +120,15 @@ providers:
         renderingOptions:
           groupName: Connection
           instance-scope-node-attribute: "winrm-shell"
+      - name: exitbehaviour
+        title: Script Exit Behaviour
+        description: "Script Exit Behaviour. console: if the std error console has data (default), the process fails. exitcode: script won't fail by default, the user must control the exit code (eg: using try/catch block). See https://github.com/rundeck-plugins/py-winrm-plugin/tree/master#running-scripts"
+        type: Select
+        values: "console, exitcode"
+        default: "console"
+        required: true
+        renderingOptions:
+          groupName: Connection
       - name: username
         title: Username
         type: String
@@ -132,7 +141,7 @@ providers:
         title: Password Storage Path
         type: String
         required: false
-        description: "Optional storage password path. Can contain property references to node attributes. A node attribute named winrm-password-storage-path will override this value."
+        description: "Optional storage password path. Can contain property references to node attributes. A node attribute named winrm-password-storage-path will override this value. Also, it can be set at job level using the option name `winrmpassword`"
         scope: Instance
         renderingOptions:
           groupName: Authentication
@@ -176,7 +185,7 @@ providers:
         title: Authentication Type
         description: "Authentication Type"
         type: Select
-        values: "basic,credssp,ntlm,kerberos"
+        values: "basic,credssp,ntlm,kerberos. It can be overwriting at node level using `winrm-authtype`"
         default: "basic"
         required: true
         scope: Instance
@@ -185,7 +194,7 @@ providers:
           instance-scope-node-attribute: "winrm-authtype"
       - name: nossl
         title: No SSL Verification
-        description: "When set to true ssl certificate validation is not performed"
+        description: "When set to true ssl certificate validation is not performed. It can be overwriting at node level using `winrm-nossl`"
         type: Select
         values: "true, false"
         default: "false"
@@ -206,7 +215,7 @@ providers:
           instance-scope-node-attribute: "winrm-disable-tls-12"
       - name: winrmtransport
         title: WinRM Transport Protocol
-        description: "WinRM transport protocol (Default: http or https when ssl is selected for Authentication type)"
+        description: "WinRM transport protocol (Default: http or https when ssl is selected for Authentication type). It can be overwriting at node level using `winrm-transport`"
         type: Select
         default: "http"
         values: "http, https"
@@ -217,7 +226,7 @@ providers:
           instance-scope-node-attribute: "winrm-transport"
       - name: winrmport
         title: WinRM Port
-        description: "WinRM port (Default: 5985/5986 for http/https)"
+        description: "WinRM port (Default: 5985/5986 for http/https). It can be overwriting at node level using `winrm-port`"
         type: String
         default: "5985"
         required: true
@@ -227,7 +236,7 @@ providers:
           instance-scope-node-attribute: "winrm-port"
       - name: certpath
         title: Certificate Path
-        description: "Certificate path for ssl verification"
+        description: "Certificate path for ssl verification. It can be overwriting at node level using `winrm-certpath`"
         type: String
         required: false
         scope: Instance
@@ -246,7 +255,7 @@ providers:
         title: Password Storage Path
         type: String
         required: false
-        description: "Optional storage password path. Can contain property references to node attributes. A node attribute named winrm-password-storage-path will override this value."
+        description: "Optional storage password path. Can contain property references to node attributes. A node attribute named winrm-password-storage-path will override this value. Also, it can be set at job level using the option name `winrmpassword`"
         scope: Instance
         renderingOptions:
           groupName: Authentication
