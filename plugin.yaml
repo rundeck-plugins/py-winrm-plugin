@@ -183,9 +183,9 @@ providers:
         scope: Instance
       - name: authtype
         title: Authentication Type
-        description: "Authentication Type"
+        description: "Authentication Type. It can be overwriting at node level using `winrm-authtype`"
         type: Select
-        values: "basic,credssp,ntlm,kerberos. It can be overwriting at node level using `winrm-authtype`"
+        values: "basic,credssp,ntlm,kerberos"
         default: "basic"
         required: true
         scope: Instance
