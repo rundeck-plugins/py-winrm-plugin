@@ -39,7 +39,7 @@ class KerberosAuth(object):
             self.log.error(msg)
             raise Exception(msg)
 
-        process.expect(".*:")
+        process.expect("Password for .*:")
         process.sendline(self.password)
 
         output = process.read()
