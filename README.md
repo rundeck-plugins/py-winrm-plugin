@@ -44,7 +44,7 @@ For Kerberos
 ## Node definition example
 
 
-```
+```xml
 <node name="Hostname" 
       description="Windows Server" 
       tags="windows" 
@@ -74,7 +74,7 @@ Further information [here](https://github.com/diyan/pywinrm#valid-transport-opti
 ### CredSSP
 
 To use CredSSP authentication you need these optional dependencies
-```
+```bash
 pip install pywinrm[credssp]
 ```
 
@@ -103,7 +103,7 @@ In resume, to use Kerberos authentication the following requirements are needed:
 ### Install Basic dependencies
 #### for Debian/Ubuntu/etc:
 
-```
+```bash
 $ sudo apt-get install python-dev libkrb5-dev
 $ pip install pywinrm[kerberos]
 $ pip install requests-kerberos
@@ -111,7 +111,7 @@ $ pip install pexpect
 ```
 
 #### for RHEL/CentOS/etc:
-```
+```bash
 $ sudo yum install python-devel krb5-devel krb5-workstation requests-kerberos
 $ pip install pywinrm[kerberos]
 $ pip install requests-kerberos
@@ -128,7 +128,7 @@ Don't use the file copier to transfer big files, the performance is not the best
 
 This plugin include a connectivity test script that can be used as a Workflow Step or it could be called it directly, for example:
 
-```
+```bash
 python contents/winrm-check.py --username <username> --hostname <windows-server> --password <password>
 ```
 
@@ -145,7 +145,7 @@ In some cases, a script can return a warning which will produce that the step fa
 So if you need to control errors, you will need to find the way to capture the exit code of your commands inside the script, for example:
 
 * Option 1: check the last exit code
-```
+```powershell
 # some code with error
 get-services
 
@@ -158,7 +158,7 @@ if ($lastExitCode -ne "0") {
 
 * Option 2: add a try/catch block
 
-```
+```powershell
 try {
     # some code with error
     get-services
@@ -173,28 +173,27 @@ catch {
 
 If you get the following error:
 
-```
+```log
 module object has no attribute 'SSL_ST_INIT'
 ```
 
-Update your verion of PyOpenSSL:
+Update your version of PyOpenSSL:
 
-```
+```bash
 python -m easy_install --upgrade pyOpenSSL
 ```
 If you get the following error after run a PowerShell Script:
-```
+```log
 Failed: NonZeroResultCode: [WinRM Python] Result code: 1
 ```
-Please check first if you have disable the ExecutionPolicy on PowerShell
+Configure the Script Invocation Script as:
+```powershell
+powershell.exe -ExecutionPolicy Bypass
 ```
-Get-ExecutionPolicy
-```
-If the result is Restricted, please run the following command:
-```
+Or you can make it permanent on the server executing on the Remote Node in powershell:
+```powershell
 Set-ExecutionPolicy -ExecutionPolicy Unrestricted
 ```
-
 
 ## Docker example
 Check these [instructions](docker/README.md) for docker test 
