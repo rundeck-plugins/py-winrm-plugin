@@ -117,6 +117,7 @@ forceTicket = False
 
 krb5config = None
 kinit = "kinit"
+krbdelegation = False
 
 if args.hostname:
     hostname = args.hostname
@@ -182,6 +183,11 @@ if "RD_CONFIG_KRB5CONFIG" in os.environ:
 if "RD_CONFIG_KINIT" in os.environ:
     kinit = os.getenv("RD_CONFIG_KINIT")
 
+if "RD_CONFIG_KRBDELEGATION" in os.environ:
+    if os.getenv("RD_CONFIG_KRBDELEGATION") == "true":
+        krbdelegation = True
+    else:
+        krbdelegation = False
 
 endpoint=transport+'://'+hostname+':'+port
 
@@ -194,7 +200,7 @@ log.debug("transport:" + str(transport))
 log.debug("diabletls12:" + str(diabletls12))
 log.debug("krb5config:" + krb5config)
 log.debug("kinit command:" + kinit)
-
+log.debug("kerberos delegation:" + str(krbdelegation))
 
 if(certpath):
     log.debug("certpath:" + certpath)
@@ -240,6 +246,7 @@ arguments["credssp_disable_tlsv1_2"] = diabletls12
 if authentication == "kerberos":
     k5bConfig = kerberosauth.KerberosAuth(krb5config=krb5config, log=log, kinit_command=kinit,username=username, password=password)
     k5bConfig.get_ticket()
+    arguments["kerberos_delegation"] = krbdelegation
 
 session = winrm.Session(target=endpoint,
                          auth=(username, password),

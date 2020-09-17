@@ -165,6 +165,14 @@ providers:
         required: false
         renderingOptions:
           groupName: Kerberos
+      - name: krbdelegation
+        title: Kerberos Delegations
+        description: "Kerberos Delegation: if True, TGT is sent to target server to allow multiple hops"
+        type: Boolean
+        default: "false"
+        required: false
+        renderingOptions:
+          groupName: Kerberos
   - name: WinRMcpPython
     title: WinRM Python File Copier
     description: Copying files to remote Windows computer
@@ -283,6 +291,14 @@ providers:
         required: false
         renderingOptions:
           groupName: Kerberos
+      - name: krbdelegation
+        title: Kerberos Delegations
+        description: "Kerberos Delegation: if True, TGT is sent to target server to allow multiple hops"
+        type: Boolean
+        default: "false"
+        required: false
+        renderingOptions:
+          groupName: Kerberos
   - name: WinRMCheck
     title: WinRM Check Step
     description: Check the connection with a remote node using winrm-python
@@ -374,6 +390,14 @@ providers:
         description: "Kinit Command"
         type: String
         default: 'kinit'
+        required: false
+        renderingOptions:
+          groupName: Kerberos
+      - name: krbdelegation
+        title: Kerberos Delegations
+        description: "Kerberos Delegation: if True, TGT is sent to target server to allow multiple hops"
+        type: Boolean
+        default: "false"
         required: false
         renderingOptions:
           groupName: Kerberos

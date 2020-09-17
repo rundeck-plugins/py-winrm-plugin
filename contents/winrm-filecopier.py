@@ -243,6 +243,7 @@ debug = False
 diabletls12 = False
 kinit = None
 krb5config = None
+krbdelegation = False
 forceTicket = False
 
 if "RD_CONFIG_AUTHTYPE" in os.environ:
@@ -298,6 +299,12 @@ if "RD_CONFIG_KRB5CONFIG" in os.environ:
 if "RD_CONFIG_KINIT" in os.environ:
     kinit = os.getenv("RD_CONFIG_KINIT")
 
+if "RD_CONFIG_KRBDELEGATION" in os.environ:
+    if os.getenv("RD_CONFIG_KRBDELEGATION") == "true":
+        krbdelegation = True
+    else:
+        krbdelegation = False
+
 endpoint = transport+'://'+args.hostname+':'+port
 
 arguments = {}
@@ -340,7 +347,7 @@ if authentication == "ntlm" and not HAS_NTLM:
 if authentication == "kerberos":
     k5bConfig = kerberosauth.KerberosAuth(krb5config=krb5config, log=log, kinit_command=kinit,username=username, password=password)
     k5bConfig.get_ticket()
-
+    arguments["kerberos_delegation"] = krbdelegation
 
 session = winrm.Session(target=endpoint,
                         auth=(username, password),
