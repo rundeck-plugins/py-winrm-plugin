@@ -111,6 +111,7 @@ shell = "cmd"
 certpath = None
 krb5config = None
 kinit = None
+krbdelegation = False
 forceTicket = False
 readtimeout = None
 operationtimeout = None
@@ -190,6 +191,12 @@ if "RD_CONFIG_KRB5CONFIG" in os.environ:
 if "RD_CONFIG_KINIT" in os.environ:
     kinit = os.getenv("RD_CONFIG_KINIT")
 
+if "RD_CONFIG_KRBDELEGATION" in os.environ:
+    if os.getenv("RD_CONFIG_KRBDELEGATION") == "true":
+        krbdelegation = True
+    else:
+        krbdelegation = False
+
 log.debug("------------------------------------------")
 log.debug("endpoint:" + endpoint)
 log.debug("authentication:" + authentication)
@@ -198,14 +205,11 @@ log.debug("nossl:" + str(nossl))
 log.debug("diabletls12:" + str(diabletls12))
 log.debug("krb5config:" + krb5config)
 log.debug("kinit command:" + kinit)
+log.debug("kerberos delegation:" + str(krbdelegation))
 log.debug("shell:" + shell)
 log.debug("readtimeout:" + str(readtimeout))
 log.debug("operationtimeout:" + str(operationtimeout))
 log.debug("exit Behaviour:" + exitBehaviour)
-
-
-
-
 log.debug("------------------------------------------")
 
 if not URLLIB_INSTALLED:
@@ -253,6 +257,7 @@ arguments["credssp_disable_tlsv1_2"] = diabletls12
 if authentication == "kerberos":
     k5bConfig = kerberosauth.KerberosAuth(krb5config=krb5config, log=log, kinit_command=kinit,username=username, password=password)
     k5bConfig.get_ticket()
+    arguments["kerberos_delegation"] = krbdelegation
 
 session = winrm.Session(target=endpoint,
                         auth=(username, password),
