@@ -25,3 +25,11 @@ def get_file(destination):
 
     return filename
 
+
+def replace_single_quotes_format(command):
+    command = command + " "
+    command = re.sub(r'\s(\')',' \"', command)
+    command = re.sub(r'(\')\s','\" ', command)
+    command = re.sub(r'\'("\'")\'', "\'", command)
+
+    return command
