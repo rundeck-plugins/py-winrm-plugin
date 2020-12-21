@@ -10,6 +10,7 @@ import threading
 import logging
 import colored_formatter
 import kerberosauth
+import common
 from colored_formatter import ColoredFormatter
 
 
@@ -157,7 +158,10 @@ if "RD_CONFIG_READTIMEOUT" in os.environ:
 if "RD_CONFIG_OPERATIONTIMEOUT" in os.environ:
     operationtimeout = os.getenv("RD_CONFIG_OPERATIONTIMEOUT")
 
-exec_command = os.getenv("RD_EXEC_COMMAND") 
+exec_command = os.getenv("RD_EXEC_COMMAND")
+
+if "cmd" in shell:
+     exec_command = common.replace_single_quotes_format(exec_command)
 
 endpoint=transport+'://'+args.hostname+':'+port
 
