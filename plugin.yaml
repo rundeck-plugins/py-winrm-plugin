@@ -173,6 +173,17 @@ providers:
         required: false
         renderingOptions:
           groupName: Kerberos
+      - name: cleanunnecessaryescaping
+        title: Clean Unnecessary Escaping
+        description: "Cleans unnecessarily Escaped characters on commands"
+        type: Select
+        values: "true, false"
+        default: "false"
+        required: true
+        scope: Instance
+        renderingOptions:
+          groupName: Misc
+          instance-scope-node-attribute: "clean-unnecessary-escaping"
   - name: WinRMcpPython
     title: WinRM Python File Copier
     description: Copying files to remote Windows computer
