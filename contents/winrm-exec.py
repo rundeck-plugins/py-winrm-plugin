@@ -159,8 +159,8 @@ if "RD_CONFIG_READTIMEOUT" in os.environ:
 if "RD_CONFIG_OPERATIONTIMEOUT" in os.environ:
     operationtimeout = os.getenv("RD_CONFIG_OPERATIONTIMEOUT")
 
-if "RD_CONFIG_CLEANUNNECESSARYESCAPING" in os.environ:
-     if os.getenv("RD_CONFIG_CLEANUNNECESSARYESCAPING") == "true":
+if "RD_CONFIG_CLEANESCAPING" in os.environ:
+     if os.getenv("RD_CONFIG_CLEANESCAPING") == "true":
         cleanescapingflg = True
      else:
         cleanescapingflg = False
