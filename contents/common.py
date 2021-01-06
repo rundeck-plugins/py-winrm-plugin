@@ -25,11 +25,42 @@ def get_file(destination):
 
     return filename
 
+def removeSimpleQuotes(command):
+   result = cleanSimpleQuoteCommand(command)
 
-def replace_single_quotes_format(command):
-    command = command + " "
-    command = re.sub(r'\s(\')',' \"', command)
-    command = re.sub(r'(\')\s','\" ', command)
-    command = re.sub(r'\'("\'")\'', "\'", command)
+   return result
 
-    return command
+def isAPathThatRequiresDoubleQuotes(candidate):
+    #first check that this is not multiple paths, e.g. 'C:\windows C:\tmp...'
+    regexpMultipleAbsolutePath = re.compile('\'[a-zA-Z]:\\\\.*\s[a-zA-Z]:\\\\.*') #at least two absolute paths
+    if regexpMultipleAbsolutePath.match(candidate): return False
+
+    #verify if this is a path with no options after, windows style. e.g. 'C:\Windows /w...'
+    regexpPathAndOption = re.compile('\'[a-zA-Z]:\\\\.*\s/.+')
+    if regexpPathAndOption.match(candidate): return False
+
+    #verify if this is a path with no options after, unix style. e.g. 'C:\Windows -v'
+    regexpPathAndOptionUnix = re.compile('\'[a-zA-Z]:\\\\.*\s-.+')
+    if regexpPathAndOptionUnix.match(candidate): return False
+
+    #finally, check if this is a single path, with single quotes, and requires to be put between double quotes.e.g. 'C:\Program Files'
+    regexPathRequireQuotes = re.compile('\'[a-zA-Z]:\\\\.*\s')
+    if regexPathRequireQuotes.match(candidate):
+        return True
+    else:
+        return False
+
+def cleanSimpleQuoteCommand(command):
+    result = re.sub(r'(\'.+?\')\s', conditionalReplace, ' '+command+' ' )
+    return result
+
+def conditionalReplace( aMatch ) :
+    result = ''
+    capturedGroup = aMatch.group(1)
+    capturedGroup = capturedGroup.strip()
+
+    result = capturedGroup[1:(len(capturedGroup)-1)]
+    if isAPathThatRequiresDoubleQuotes(capturedGroup):
+        result = '"' + result + '"'
+
+    return result+' '

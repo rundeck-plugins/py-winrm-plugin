@@ -118,6 +118,7 @@ readtimeout = None
 operationtimeout = None
 forcefail = False
 exitBehaviour = "console"
+cleanescapingflg = False
 
 if "RD_CONFIG_AUTHTYPE" in os.environ:
     authentication = os.getenv("RD_CONFIG_AUTHTYPE")
@@ -158,10 +159,18 @@ if "RD_CONFIG_READTIMEOUT" in os.environ:
 if "RD_CONFIG_OPERATIONTIMEOUT" in os.environ:
     operationtimeout = os.getenv("RD_CONFIG_OPERATIONTIMEOUT")
 
-exec_command = os.getenv("RD_EXEC_COMMAND")
+if "RD_CONFIG_CLEANESCAPING" in os.environ:
+     if os.getenv("RD_CONFIG_CLEANESCAPING") == "true":
+        cleanescapingflg = True
+     else:
+        cleanescapingflg = False
 
-if "cmd" in shell:
-     exec_command = common.replace_single_quotes_format(exec_command)
+exec_command = os.getenv("RD_EXEC_COMMAND")
+log.debug("Command will be executed: " + exec_command)
+
+if cleanescapingflg:
+     exec_command = common.removeSimpleQuotes(exec_command)
+     log.debug("Command escaped will be executed: " + exec_command)
 
 endpoint=transport+'://'+args.hostname+':'+port
 
@@ -214,6 +223,7 @@ log.debug("shell:" + shell)
 log.debug("readtimeout:" + str(readtimeout))
 log.debug("operationtimeout:" + str(operationtimeout))
 log.debug("exit Behaviour:" + exitBehaviour)
+log.debug("cleanescapingflg: " + str(cleanescapingflg))
 log.debug("------------------------------------------")
 
 if not URLLIB_INSTALLED:
