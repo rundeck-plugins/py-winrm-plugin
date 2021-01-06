@@ -176,11 +176,9 @@ providers:
       - name: cleanescaping
         title: Clean Escaping
         description: "Cleans unnecessarily Escaped characters on commands"
-        type: Select
-        values: "true, false"
+        type: Boolean
         default: "false"
-        required: true
-        scope: Instance
+        required: false
         renderingOptions:
           groupName: Misc
           instance-scope-node-attribute: "clean-escaping"
