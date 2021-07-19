@@ -56,6 +56,9 @@ def run_cmd(self, command, args=(), out_stream=None, err_stream=None):
         if a.startswith('RD_'):
            envs.update({a:os.getenv(a)})
 
+    if "RD_EXEC_COMMAND" in envs:
+        del envs["RD_EXEC_COMMAND"]
+
     # TODO optimize perf. Do not call open/close shell every time
     shell_id = self.protocol.open_shell(codepage=65001, env_vars=envs)
     command_id = self.protocol.run_command(shell_id, command, args)
