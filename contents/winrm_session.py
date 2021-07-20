@@ -28,6 +28,8 @@ import re
 PY2 = sys.version_info[0] == 2
 PY3 = sys.version_info[0] == 3
 PY34 = sys.version_info[0:2] >= (3, 4)
+RD = "RD_"
+RD_COMMAND = "RD_EXEC_COMMAND"
 
 if PY3:
     string_types = str,
@@ -53,11 +55,8 @@ def run_cmd(self, command, args=(), out_stream=None, err_stream=None):
 
     envs = {}
     for a in os.environ:
-        if a.startswith('RD_'):
+        if a.startswith(RD) and a != RD_COMMAND:
            envs.update({a:os.getenv(a)})
-
-    if "RD_EXEC_COMMAND" in envs:
-        del envs["RD_EXEC_COMMAND"]
 
     # TODO optimize perf. Do not call open/close shell every time
     shell_id = self.protocol.open_shell(codepage=65001, env_vars=envs)
