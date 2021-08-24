@@ -29,6 +29,9 @@ providers:
         default: "python"
         required: true
         scope: Instance
+        renderingOptions:
+          groupName: Interpreter
+          instance-scope-node-attribute: "winrm-interpreter"
       - name: authtype
         title: Authentication Type
         description: "Authentication Type. It can be overwriting at node level using `winrm-authtype`"
@@ -198,6 +201,9 @@ providers:
         default: "python"
         required: true
         scope: Instance
+        renderingOptions:
+          groupName: Interpreter
+          instance-scope-node-attribute: "winrm-interpreter"
       - name: authtype
         title: Authentication Type
         description: "Authentication Type. It can be overwriting at node level using `winrm-authtype`"
