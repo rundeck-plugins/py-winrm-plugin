@@ -185,7 +185,7 @@ class CopyFiles(object):
         print("coping file %s to %s" % (local_path, full_path))
 
         self.session.run_ps('if (!(Test-Path {0})) {{ New-Item -ItemType directory -Path {0} }}'.format(remote_path))
-        
+
         if(override):
             self.session.run_ps('if ((Test-Path {0})) {{ rm {0} }}'.format(full_path))
 
