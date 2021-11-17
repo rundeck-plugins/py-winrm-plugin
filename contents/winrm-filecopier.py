@@ -187,7 +187,7 @@ class CopyFiles(object):
         self.session.run_ps('if (!(Test-Path {0})) {{ New-Item -ItemType directory -Path {0} }}'.format(remote_path))
 
         if(override):
-            self.session.run_ps('if ((Test-Path {0})) {{ rm {0} }}'.format(full_path))
+            self.session.run_ps('if ((Test-Path {0} -PathType Leaf)) {{ rm {0} }}'.format(full_path))
 
         size = os.stat(local_path).st_size
         with open(local_path, 'rb') as f:
