@@ -174,7 +174,8 @@ class CopyFiles(object):
                     remote_filename,
                     local_path,
                     step=2048,
-                    quiet=True):
+                    quiet=True,
+                    override=False):
 
         if remote_path.endswith('/') or remote_path.endswith('\\'):
             full_path = remote_path + remote_filename
@@ -184,6 +185,9 @@ class CopyFiles(object):
         print("coping file %s to %s" % (local_path, full_path))
 
         self.session.run_ps('if (!(Test-Path {0})) {{ New-Item -ItemType directory -Path {0} }}'.format(remote_path))
+
+        if(override):
+            self.session.run_ps('if ((Test-Path {0} -PathType Leaf)) {{ rm {0} }}'.format(full_path))
 
         size = os.stat(local_path).st_size
         with open(local_path, 'rb') as f:
@@ -245,6 +249,10 @@ kinit = None
 krb5config = None
 krbdelegation = False
 forceTicket = False
+override=False
+
+if os.environ.get('RD_CONFIG_OVERRIDE') == 'true':
+    override = True
 
 if "RD_CONFIG_AUTHTYPE" in os.environ:
     authentication = os.getenv("RD_CONFIG_AUTHTYPE")
@@ -377,7 +385,8 @@ if not os.path.isdir(args.source):
     copy.winrm_upload(remote_path=destination,
                       remote_filename=filename,
                       local_path=args.source,
-                      quiet=quiet)
+                      quiet=quiet,
+                      override=override)
 else:
     log.warn("The source is a directory, skipping copy")
 

@@ -284,6 +284,10 @@ providers:
         name: debug
         title: Debug?
         description: 'Write debug messages'
+      - type: Boolean
+        name: override
+        title: Override?
+        description: 'Overrides the file on the remote server if it already exists'
       - name: krb5config
         title: krb5 Config File
         description: "Path of krb5.conf file"
@@ -410,4 +414,3 @@ providers:
         required: false
         renderingOptions:
           groupName: Kerberos
-
