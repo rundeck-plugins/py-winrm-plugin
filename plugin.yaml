@@ -24,11 +24,14 @@ providers:
     config:
       - name: interpreter
         title: Python Interpreter
-        description: "Python Interpreter (Default: python)"
+        description: "Python Interpreter (Default: python). It can be overwritten at node level using `winrm-interpreter`"
         type: String
         default: "python"
         required: true
         scope: Instance
+        renderingOptions:
+          groupName: Interpreter
+          instance-scope-node-attribute: "winrm-interpreter"
       - name: authtype
         title: Authentication Type
         description: "Authentication Type. It can be overwriting at node level using `winrm-authtype`"
@@ -193,11 +196,14 @@ providers:
     config:
       - name: interpreter
         title: Python Interpreter
-        description: "Python Interpreter (Default: python)"
+        description: "Python Interpreter (Default: python). It can be overwritten at node level using `winrm-interpreter`"
         type: String
         default: "python"
         required: true
         scope: Instance
+        renderingOptions:
+          groupName: Interpreter
+          instance-scope-node-attribute: "winrm-interpreter"
       - name: authtype
         title: Authentication Type
         description: "Authentication Type. It can be overwriting at node level using `winrm-authtype`"
@@ -323,7 +329,7 @@ providers:
     config:
       - name: interpreter
         title: Python Interpreter
-        description: "Python Interpreter (Default: python)"
+        description: "Python Interpreter (Default: python). It can be overwritten at node level using `winrm-interpreter`"
         type: String
         default: "python"
         required: true
