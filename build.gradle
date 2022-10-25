@@ -1,5 +1,8 @@
+import org.apache.tools.ant.filters.ReplaceTokens
+
 buildscript {
     repositories {
+        mavenLocal()
         mavenCentral()
     }
 }
@@ -7,14 +10,29 @@ plugins {
     id 'pl.allegro.tech.build.axion-release' version '1.9.3'
 }
 
+apply plugin: 'maven-publish'
+
+defaultTasks 'clean', 'build', 'pluginZip'
+task build(dependsOn: ['pluginZip']) doLast {
+}
+
+task install(dependsOn: ['build','publishToMavenLocal']) doLast {
+}
+
+task clean(type: Delete) {
+    delete('build')
+}
+
 ext.pluginName = 'Python Winrm Node Executor/File Copier Plugin'
 ext.pluginDescription = "Connect to remote windows nodes using WINRM"
-ext.sopsCopyright = "© 2017, Rundeck, Inc."
-ext.sopsUrl = "http://rundeck.com"
+ext.sopsCopyright = "© 2022, Pagerduty, Inc."
+ext.sopsUrl = "https://pagerduty.com"
 ext.buildDateString=new Date().format("yyyy-MM-dd'T'HH:mm:ssX")
 ext.archivesBaseName = "py-winrm-plugin"
 ext.pluginBaseFolder = "."
 
+project.version = scmVersion.version
+ext.archiveFilename = ext.archivesBaseName + '-' + version
 
 scmVersion {
     ignoreUncommittedChanges = true
@@ -33,8 +51,68 @@ scmVersion {
     }
 }
 
-project.version = scmVersion.version
 
-ext.archiveFilename = ext.archivesBaseName + '-' + version 
+task pluginZip(type: Jar) {
+    destinationDir = file("build/libs")
+    baseName = project.ext.archivesBaseName
+    version = project.version
+    classifier = ''
+    extension = 'zip'
 
-apply from: 'https://raw.githubusercontent.com/rundeck-plugins/build-zip/master/build.gradle'
+    from("${project.buildDir}/zip-contents") {
+        include("*.yaml")
+        include("resources/**")
+        include("contents/*")
+        into(archiveFilename)
+    }
+
+    manifest {
+        attributes 'Rundeck-Plugin-Name': pluginName.toString(),
+            'Rundeck-Plugin-Description': pluginDescription.toString(),
+            'Rundeck-Plugin-Archive': 'true',
+            'Rundeck-Plugin-File-Version': version,
+            'Rundeck-Plugin-Author': sopsCopyright,
+            'Rundeck-Plugin-URL': sopsUrl,
+            'Rundeck-Plugin-Date': buildDateString
+    }
+}
+
+pluginZip.doFirst {
+    def assetsMap = new Properties()
+    def tokens = assetsMap + [
+        version    : version,
+        date       : new Date().format("yyyy-MM-dd'T'HH:mm:ssX").toString(),
+        author     : sopsCopyright,
+        url        : sopsUrl,
+        title      : pluginName,
+        description: pluginDescription,
+        name       : archivesBaseName.toString(),
+    ]
+
+    copy {
+
+        from("${project.projectDir}/resources"){
+            include '**/*'
+            into "resources"
+        }
+
+        from("${project.projectDir}/contents"){
+            into "contents"
+        }
+
+        from("${project.projectDir}/plugin.yaml") {
+            filter(ReplaceTokens, tokens: tokens)
+            exclude '**/*.png'
+        }
+
+        into "${project.buildDir}/zip-contents"
+    }
+}
+
+publishing {
+    publications {
+        mavenZip(MavenPublication) {
+            artifact pluginZip
+        }
+    }
+}
