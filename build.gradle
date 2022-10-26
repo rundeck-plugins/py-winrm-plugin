@@ -1,110 +1,39 @@
-import org.apache.tools.ant.filters.ReplaceTokens
-
 buildscript {
     repositories {
-        mavenLocal()
         mavenCentral()
     }
 }
-
 plugins {
-    id 'pl.allegro.tech.build.axion-release' version '1.13.6'
+    id 'pl.allegro.tech.build.axion-release' version '1.13.4'
 }
-
-apply plugin: 'groovy'
-apply plugin: 'maven-publish'
-
-defaultTasks 'clean', 'build', 'pluginZip'
 
 scmVersion {
     ignoreUncommittedChanges = true
     tag {
-        prefix = 'v'
+        prefix = ''
         versionSeparator = ''
+        def origDeserialize=deserialize
+        //apend .0 to satisfy semver if the tag version is only X.Y
+        deserialize = { config, position, tagName ->
+            def orig = origDeserialize(config, position, tagName)
+            if (orig.split('\\.').length < 3) {
+                orig += ".0"
+            }
+            orig
+        }
     }
 }
+
+ext.pluginName = 'Python Winrm Node Executor/File Copier Plugin'
+ext.pluginDescription = "Connect to remote windows nodes using WINRM"
+ext.sopsCopyright = "© 2022, Pagerduty, Inc."
+ext.sopsUrl = "https://pagerduty.com"
+ext.buildDateString=new Date().format("yyyy-MM-dd'T'HH:mm:ssX")
+ext.archivesBaseName = "py-winrm-plugin"
+ext.pluginBaseFolder = "."
 
 project.version = scmVersion.version
 
-def pluginName = 'Python Winrm Node Executor/File Copier Plugin'
-def pluginDescription = "Connect to remote windows nodes using WINRM"
-def sopsCopyright = "© 2022, Pagerduty, Inc."
-def sopsUrl = "https://pagerduty.com"
-def buildDateString=new Date().format("yyyy-MM-dd'T'HH:mm:ssX")
-def archivesBaseName = "py-winrm-plugin"
-def pluginBaseFolder = "."
-def archiveFilename = archivesBaseName + '-' + version
+ext.archiveFilename = ext.archivesBaseName + '-' + version 
 
-build.dependsOn('pluginZip')
-
-clean {
-    delete('build')
-}
-
-task install(dependsOn: ['build','publishToMavenLocal']) doLast {
-}
-
-task pluginZip(type: Jar) {
-    destinationDir = file("build/libs")
-    baseName = project.archivesBaseName
-    version = project.version
-    classifier = ''
-    extension = 'zip'
-
-    from("${project.buildDir}/zip-contents") {
-        include("*.yaml")
-        include("resources/**")
-        include("contents/*")
-        into(archiveFilename)
-    }
-
-    manifest {
-        attributes 'Rundeck-Plugin-Name': pluginName.toString(),
-            'Rundeck-Plugin-Description': pluginDescription.toString(),
-            'Rundeck-Plugin-Archive': 'true',
-            'Rundeck-Plugin-File-Version': version,
-            'Rundeck-Plugin-Author': sopsCopyright,
-            'Rundeck-Plugin-URL': sopsUrl,
-            'Rundeck-Plugin-Date': buildDateString
-    }
-}
-
-pluginZip.doFirst {
-    def assetsMap = new Properties()
-    def tokens = assetsMap + [
-        version    : version,
-        date       : new Date().format("yyyy-MM-dd'T'HH:mm:ssX").toString(),
-        author     : sopsCopyright,
-        url        : sopsUrl,
-        title      : pluginName,
-        description: pluginDescription,
-        name       : archivesBaseName.toString(),
-    ]
-
-    copy {
-
-        from("${project.projectDir}/resources"){
-            include '**/*'
-            into "resources"
-        }
-
-        from("${project.projectDir}/contents"){
-            into "contents"
-        }
-
-        from("${project.projectDir}/plugin.yaml") {
-            filter(ReplaceTokens, tokens: tokens)
-            exclude '**/*.png'
-        }
-
-        into "${project.buildDir}/zip-contents"
-    }
-}
-
-publishing {
-    publications {
-        mavenZip(MavenPublication) {
-            artifact pluginZip
-        }
-    }
-}
+apply from: 'https://raw.githubusercontent.com/rundeck-plugins/build-zip/gradle-5.6/build.gradle'
