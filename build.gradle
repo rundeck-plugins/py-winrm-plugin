@@ -4,17 +4,8 @@ buildscript {
     }
 }
 plugins {
-    id 'pl.allegro.tech.build.axion-release' version '1.9.3'
+    id 'pl.allegro.tech.build.axion-release' version '1.13.4'
 }
-
-ext.pluginName = 'Python Winrm Node Executor/File Copier Plugin'
-ext.pluginDescription = "Connect to remote windows nodes using WINRM"
-ext.sopsCopyright = "© 2017, Rundeck, Inc."
-ext.sopsUrl = "http://rundeck.com"
-ext.buildDateString=new Date().format("yyyy-MM-dd'T'HH:mm:ssX")
-ext.archivesBaseName = "py-winrm-plugin"
-ext.pluginBaseFolder = "."
-
 
 scmVersion {
     ignoreUncommittedChanges = true
@@ -33,8 +24,16 @@ scmVersion {
     }
 }
 
+ext.pluginName = 'Python Winrm Node Executor/File Copier Plugin'
+ext.pluginDescription = "Connect to remote windows nodes using WINRM"
+ext.sopsCopyright = "© 2022, Pagerduty, Inc."
+ext.sopsUrl = "https://pagerduty.com"
+ext.buildDateString=new Date().format("yyyy-MM-dd'T'HH:mm:ssX")
+ext.archivesBaseName = "py-winrm-plugin"
+ext.pluginBaseFolder = "."
+
 project.version = scmVersion.version
 
 ext.archiveFilename = ext.archivesBaseName + '-' + version 
 
-apply from: 'https://raw.githubusercontent.com/rundeck-plugins/build-zip/master/build.gradle'
+apply from: 'https://raw.githubusercontent.com/rundeck-plugins/build-zip/gradle-5.6/build.gradle'
