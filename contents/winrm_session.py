@@ -49,7 +49,7 @@ else:
 
 # TODO: this PR https://github.com/diyan/pywinrm/pull/55 will add this fix.
 # when this PR is merged, this won't be needed anymore
-def run_cmd(self, command, args=(), out_stream=None, err_stream=None):
+def run_cmd(self, command, args=(), out_stream=None, err_stream=None, output_charset='utf-8'):
     self.protocol.get_command_output = protocol.get_command_output
     winrm.Session._clean_error_msg = self._clean_error_msg
 
@@ -63,7 +63,7 @@ def run_cmd(self, command, args=(), out_stream=None, err_stream=None):
     command_id = self.protocol.run_command(shell_id, command, args)
     rs = Response(self.protocol.get_command_output(self.protocol, shell_id, command_id, out_stream, err_stream))
 
-    error = self._clean_error_msg(rs.std_err)
+    error = self._clean_error_msg(rs.std_err, output_charset)
     rs.std_err = error
 
     self.protocol.cleanup_command(shell_id, command_id)
@@ -71,20 +71,20 @@ def run_cmd(self, command, args=(), out_stream=None, err_stream=None):
     return rs
 
 
-def run_ps(self, script, out_stream=None, err_stream=None):
+def run_ps(self, script, out_stream=None, err_stream=None, output_charset='utf-8'):
     """base64 encodes a Powershell script and executes the powershell
     encoded script command
     """
     script = to_text(script)
     encoded_ps = base64.b64encode(script.encode('utf_16_le')).decode('ascii')
-    rs = self.run_cmd('powershell -encodedcommand {0}'.format(encoded_ps),out_stream=out_stream, err_stream=err_stream)
+    rs = self.run_cmd('powershell -encodedcommand {0}'.format(encoded_ps),out_stream=out_stream, err_stream=err_stream, output_charset=output_charset)
 
     return rs
 
 
-def _clean_error_msg(self, msg):
+def _clean_error_msg(self, msg, encoding='utf-8'):
     #data=""
-    msg = to_text(msg)
+    msg = to_text(msg, encoding)
 
     if msg.startswith("#< CLIXML") or "<Objs Version=" in msg or "-1</PI><PC>" in msg:
         # for proper xml, we need to remove the CLIXML part
@@ -135,24 +135,25 @@ class Response(object):
 
 
 class RunCommand:
-    def __init__(self, session, shell, command ):
+    def __init__(self, session, shell, command, output_charset='utf-8'):
         self.stat, self.o_std, self.e_std = None, None, None
         self.o_stream = BytesIO()
         self.e_stream = BytesIO()
         self.session = session
         self.exec_command = command
         self.shell = shell
+        self.output_charset = output_charset
 
     def get_response(self):
         try:
             if self.shell == "cmd":
-                response = self.session.run_cmd(self.exec_command, out_stream=self.o_stream, err_stream=self.e_stream)
+                response = self.session.run_cmd(self.exec_command, out_stream=self.o_stream, err_stream=self.e_stream, output_charset=self.output_charset)
                 self.o_std = response.std_out
                 self.e_std = response.std_err
                 self.stat = response.status_code
 
             if self.shell == "powershell":
-                response = self.session.run_ps(self.exec_command, out_stream=self.o_stream, err_stream=self.e_stream)
+                response = self.session.run_ps(self.exec_command, out_stream=self.o_stream, err_stream=self.e_stream, output_charset=self.output_charset)
                 self.o_std = response.std_out
                 self.e_std = response.std_err
                 self.stat = response.status_code

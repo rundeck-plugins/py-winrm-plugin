@@ -13,7 +13,6 @@ import kerberosauth
 import common
 from colored_formatter import ColoredFormatter
 
-
 class SuppressFilter(logging.Filter):
     def filter(self, record):
         return 'wsman' not in record.getMessage()
@@ -210,6 +209,10 @@ if "RD_CONFIG_KRBDELEGATION" in os.environ:
     else:
         krbdelegation = False
 
+output_charset = "utf-8"
+if "RD_NODE_OUTPUT_CHARSET" in os.environ:
+    output_charset = os.getenv("RD_NODE_OUTPUT_CHARSET")
+
 log.debug("------------------------------------------")
 log.debug("endpoint:" + endpoint)
 log.debug("authentication:" + authentication)
@@ -220,6 +223,7 @@ log.debug("krb5config:" + krb5config)
 log.debug("kinit command:" + kinit)
 log.debug("kerberos delegation:" + str(krbdelegation))
 log.debug("shell:" + shell)
+log.debug("output_charset:" + output_charset)
 log.debug("readtimeout:" + str(readtimeout))
 log.debug("operationtimeout:" + str(operationtimeout))
 log.debug("exit Behaviour:" + exitBehaviour)
@@ -282,7 +286,7 @@ winrm.Session.run_ps = winrm_session.run_ps
 winrm.Session._clean_error_msg = winrm_session._clean_error_msg
 winrm.Session._strip_namespace = winrm_session._strip_namespace
 
-tsk = winrm_session.RunCommand(session, shell, exec_command)
+tsk = winrm_session.RunCommand(session, shell, exec_command, output_charset)
 t = threading.Thread(target=tsk.get_response)
 t.start()
 realstdout = sys.stdout
@@ -293,10 +297,6 @@ sys.stderr = tsk.e_stream
 lastpos = 0
 lasterrorpos = 0
 
-charset = "utf-8"
-if "RD_NODE_CHARSET" in os.environ:
-    charset = os.getenv("RD_NODE_CHARSET")
-
 while True:
     t.join(.1)
 
@@ -306,7 +306,7 @@ while True:
         if isinstance(read, str):
             realstdout.write(read)
         else:
-            realstdout.write(read.decode(charset))
+            realstdout.write(read.decode(output_charset))
 
         lastpos = sys.stdout.tell()
 
@@ -317,6 +317,8 @@ sys.stdout.seek(0)
 sys.stderr.seek(0)
 sys.stdout = realstdout
 sys.stderr = realstderr
+
+
 
 if exitBehaviour == 'console':
     if tsk.e_std:
