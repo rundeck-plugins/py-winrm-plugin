@@ -24,8 +24,8 @@ scmVersion {
     }
 }
 
-ext.pluginName = 'Python Winrm Node Executor/File Copier Plugin'
-ext.pluginDescription = "Connect to remote windows nodes using WINRM"
+ext.pluginName = 'py-winrm-plugin'
+ext.pluginDescription = "Python Winrm Node Executor/File Copier Plugin. Connect to remote windows nodes using WINRM"
 ext.sopsCopyright = "© 2022, Pagerduty, Inc."
 ext.sopsUrl = "https://pagerduty.com"
 ext.buildDateString=new Date().format("yyyy-MM-dd'T'HH:mm:ssX")
