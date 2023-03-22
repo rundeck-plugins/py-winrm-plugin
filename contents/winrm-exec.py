@@ -209,7 +209,8 @@ if "RD_CONFIG_KRBDELEGATION" in os.environ:
     else:
         krbdelegation = False
 
-output_charset = "utf-8"
+DEFAULT_CHARSET = 'utf-8'
+output_charset = DEFAULT_CHARSET
 if "RD_NODE_OUTPUT_CHARSET" in os.environ:
     output_charset = os.getenv("RD_NODE_OUTPUT_CHARSET")
 
@@ -300,15 +301,23 @@ lasterrorpos = 0
 while True:
     t.join(.1)
 
-    if sys.stdout.tell() != lastpos:
-        sys.stdout.seek(lastpos)
-        read=sys.stdout.read()
-        if isinstance(read, str):
-            realstdout.write(read)
-        else:
-            realstdout.write(read.decode(output_charset))
-
-        lastpos = sys.stdout.tell()
+    try:
+        if sys.stdout.tell() != lastpos:
+            sys.stdout.seek(lastpos)
+            read=sys.stdout.read()
+            if isinstance(read, str):
+                realstdout.write(read)
+            else:
+                realstdout.write(read.decode(output_charset))
+    except UnicodeDecodeError:
+        try:
+            realstdout.write(read.decode(DEFAULT_CHARSET))
+        except Exception as e:
+            log.error(e)
+    except Exception as e:
+        log.error(e)
+    
+    lastpos = sys.stdout.tell()
 
     if not t.is_alive():
         break
@@ -317,8 +326,6 @@ sys.stdout.seek(0)
 sys.stderr.seek(0)
 sys.stdout = realstdout
 sys.stderr = realstderr
-
-
 
 if exitBehaviour == 'console':
     if tsk.e_std:
