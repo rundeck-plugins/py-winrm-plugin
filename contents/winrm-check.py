@@ -73,16 +73,6 @@ try:
     from requests_kerberos import HTTPKerberosAuth, REQUIRED, OPTIONAL, DISABLED
     KRB_INSTALLED = True
 except ImportError:
-    import pip
-    package='requests-kerberos'
-    pip.main(['install',package])
-    package='pywinrm[kerberos]'
-    pip.main(['install',package])
-
-try:
-    from requests_kerberos import HTTPKerberosAuth, REQUIRED, OPTIONAL, DISABLED
-    KRB_INSTALLED = True
-except ImportError:
     KRB_INSTALLED = False
 
 try:
