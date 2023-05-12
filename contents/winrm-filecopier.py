@@ -78,7 +78,7 @@ except ImportError as e:
 try:
     from requests_kerberos import HTTPKerberosAuth, REQUIRED, OPTIONAL, DISABLED
     KRB_INSTALLED = True
-except ImportError as e:
+except ImportError:
     import pip
     package='requests-kerberos'
     pip.main(['install',package])
@@ -88,7 +88,7 @@ except ImportError as e:
 try:
     from requests_kerberos import HTTPKerberosAuth, REQUIRED, OPTIONAL, DISABLED
     KRB_INSTALLED = True
-except ImportError as e:
+except ImportError:
     KRB_INSTALLED = False
 
 try:
