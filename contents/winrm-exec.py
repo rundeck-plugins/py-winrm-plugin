@@ -60,6 +60,8 @@ try:
 except ImportError as e:
     try:
         import pip
+        package='winrm'
+        pip.main(['install',package])
         package='pywinrm'
         pip.main(['install',package])
         
