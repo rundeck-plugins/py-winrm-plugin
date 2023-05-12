@@ -47,8 +47,6 @@ try:
 except ImportError as e:
     try:
         import pip
-        package='winrm'
-        pip.main(['install',package])
         package='pywinrm'
         pip.main(['install',package])
         
@@ -75,13 +73,12 @@ try:
     from requests_kerberos import HTTPKerberosAuth, REQUIRED, OPTIONAL, DISABLED
     KRB_INSTALLED = True
 except ImportError as e:
+    import pip
+    package='requests-kerberos'
+    pip.main(['install',package])
+    package='pywinrm[kerberos]'
+    pip.main(['install',package])
     try:
-        import pip
-        package='requests-kerberos'
-        pip.main(['install',package])
-        package='pywinrm[kerberos]'
-        pip.main(['install',package])
-
         from requests_kerberos import HTTPKerberosAuth, REQUIRED, OPTIONAL, DISABLED
         KRB_INSTALLED = True
     except ImportError as e:
