@@ -84,11 +84,12 @@ except ImportError as e:
     pip.main(['install',package])
     package='pywinrm[kerberos]'
     pip.main(['install',package])
-    try:
-        from requests_kerberos import HTTPKerberosAuth, REQUIRED, OPTIONAL, DISABLED
-        KRB_INSTALLED = True
-    except ImportError as e:
-        KRB_INSTALLED = False
+
+try:
+    from requests_kerberos import HTTPKerberosAuth, REQUIRED, OPTIONAL, DISABLED
+    KRB_INSTALLED = True
+except ImportError as e:
+    KRB_INSTALLED = False
 
 try:
     from requests_ntlm import HttpNtlmAuth
