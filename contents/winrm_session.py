@@ -7,7 +7,7 @@ except:
 	os.environ.setdefault('PATH', '')
 try:
     from StringIO import StringIO
-except ImportError:
+except ImportError as e:
     from io import StringIO
 try:
     from BytesIO import BytesIO
@@ -17,7 +17,7 @@ except ImportError as e:
 try:
     import protocol
     import winrm
-except ImportError:
+except ImportError as e:
     pass
 
 import base64

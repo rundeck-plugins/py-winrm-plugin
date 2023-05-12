@@ -55,12 +55,6 @@ except ImportError as e:
         import pip
         package='pywinrm'
         pip.main(['install',package])
-        package='pywinrm[credssp]'
-        pip.main(['install',package])
-        package='pywinrm[kerberos]'
-        pip.main(['install',package])
-        package='pywinrm[ntlm]'
-        pip.main(['install',package])
         
         import winrm
         WINRM_INSTALLED = True
@@ -84,21 +78,23 @@ except ImportError as e:
 try:
     from requests_kerberos import HTTPKerberosAuth, REQUIRED, OPTIONAL, DISABLED
     KRB_INSTALLED = True
-except ImportError:
+except ImportError as e:
     try:
         import pip
         package='requests-kerberos'
         pip.main(['install',package])
+        package='pywinrm[kerberos]'
+        pip.main(['install',package])
 
         from requests_kerberos import HTTPKerberosAuth, REQUIRED, OPTIONAL, DISABLED
         KRB_INSTALLED = True
-    except ImportError:
+    except ImportError as e:
         KRB_INSTALLED = False
 
 try:
     from requests_ntlm import HttpNtlmAuth
     HAS_NTLM = True
-except ImportError as ie:
+except ImportError as e:
     try:
         import pip
         package='requests-ntlm'
@@ -106,21 +102,23 @@ except ImportError as ie:
 
         from requests_ntlm import HttpNtlmAuth
         HAS_NTLM = True
-    except ImportError as ie:
+    except ImportError as e:
         HAS_NTLM = False
 
 try:
     from requests_credssp import HttpCredSSPAuth
     HAS_CREDSSP = True
-except ImportError as ie:
+except ImportError as e:
     try:
         import pip
         package='requests-credssp'
         pip.main(['install',package])
+        package='pywinrm[credssp]'
+        pip.main(['install',package])
 
         from requests_credssp import HttpCredSSPAuth
         HAS_CREDSSP = True
-    except ImportError as ie:
+    except ImportError as e:
         HAS_CREDSSP = False
 
 try:
