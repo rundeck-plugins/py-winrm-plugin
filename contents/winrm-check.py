@@ -52,7 +52,7 @@ except ImportError as e:
     package='pywinrm'
     pip.main(['install',package])
     WINRM_INSTALLED = False
- try:       
+try:   
     import winrm
     WINRM_INSTALLED = True
 except ImportError as e:
@@ -66,7 +66,7 @@ except ImportError as e:
     package='requests'
     pip.main(['install',package])
     REQUESTS_INSTALLED = False
-try:    
+try:
     import requests
     REQUESTS_INSTALLED = True
 except ImportError as e:
