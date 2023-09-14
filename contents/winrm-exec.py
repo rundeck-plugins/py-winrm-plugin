@@ -13,6 +13,12 @@ import kerberosauth
 import common
 from colored_formatter import ColoredFormatter
 
+import locale
+import codecs
+
+sys.stdout.reconfigure(encoding='utf-8')
+locale.setlocale(locale.LC_ALL, 'fr_FR.utf8')
+
 class SuppressFilter(logging.Filter):
     def filter(self, record):
         return 'wsman' not in record.getMessage()
@@ -298,29 +304,34 @@ sys.stderr = tsk.e_stream
 lastpos = 0
 lasterrorpos = 0
 
+output_charset = 'cp437'
+
 while True:
     t.join(.1)
 
     try:
         if sys.stdout.tell() != lastpos:
             sys.stdout.seek(lastpos)
-            read=sys.stdout.read()
+            read = sys.stdout.read()
             if isinstance(read, str):
                 realstdout.write(read)
             else:
-                realstdout.write(read.decode(output_charset))
+                try:
+                    realstdout.write(read.decode(output_charset))
+                except UnicodeDecodeError:
+                    realstdout.write(read.decode('cp437', errors='replace'))
     except UnicodeDecodeError:
         try:
-            realstdout.write(read.decode(DEFAULT_CHARSET))
+            realstdout.write(read.decode('cp437', errors='replace'))
         except Exception as e:
             log.error(e)
     except Exception as e:
-        log.error(e)
-    
+        log.error(e)    
     lastpos = sys.stdout.tell()
 
     if not t.is_alive():
         break
+
 
 sys.stdout.seek(0)
 sys.stderr.seek(0)
