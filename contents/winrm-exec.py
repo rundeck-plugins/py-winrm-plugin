@@ -17,12 +17,6 @@ class SuppressFilter(logging.Filter):
     def filter(self, record):
         return 'wsman' not in record.getMessage()
 
-try:
-    from urllib3.connectionpool import log
-    log.addFilter(SuppressFilter())
-except:
-    pass
-
 #checking and importing dependencies
 ISPY3 = sys.version_info[0] == 3
 WINRM_INSTALLED = False
@@ -31,12 +25,25 @@ KRB_INSTALLED = False
 HAS_NTLM = False
 HAS_CREDSSP = False
 HAS_PEXPECT = False
+REQUESTS_INSTALLED = False
 
 if ISPY3:
     from inspect import getfullargspec as getargspec
 else:
     from inspect import getargspec
 
+## import pip module
+import pip
+
+## check urllib3
+try:
+    import requests.packages.urllib3
+    requests.packages.urllib3.disable_warnings()
+    URLLIB_INSTALLED = True
+except ImportError as e:
+    package='urllib3'
+    pip.main(['install',package])
+    URLLIB_INSTALLED = False
 try:
     import requests.packages.urllib3
     requests.packages.urllib3.disable_warnings()
@@ -44,37 +51,84 @@ try:
 except ImportError as e:
     URLLIB_INSTALLED = False
 
+## check pywinrm
 try:
     import winrm
-
+    WINRM_INSTALLED = True
+except ImportError as e:
+    package='pywinrm'
+    pip.main(['install',package])
+    WINRM_INSTALLED = False
+try:
+    import winrm
     WINRM_INSTALLED = True
 except ImportError as e:
     WINRM_INSTALLED = False
 
+## check requests
+try:
+    import requests
+    REQUESTS_INSTALLED = True
+except ImportError as e:
+    package='requests'
+    pip.main(['install',package])
+    REQUESTS_INSTALLED = False
+try:
+    import requests
+    REQUESTS_INSTALLED = True
+except ImportError as e:
+    REQUESTS_INSTALLED = False
+
+## check kerberos
 try:
     from requests_kerberos import HTTPKerberosAuth, REQUIRED, OPTIONAL, DISABLED
-
     KRB_INSTALLED = True
 except ImportError:
     KRB_INSTALLED = False
 
+## check requests ntlm
 try:
     from requests_ntlm import HttpNtlmAuth
-
     HAS_NTLM = True
-except ImportError as ie:
+except ImportError as e:
+    package='requests-ntlm'
+    pip.main(['install',package])
+    HAS_NTLM = False
+try:
+    from requests_ntlm import HttpNtlmAuth
+    HAS_NTLM = True
+except ImportError as e:
     HAS_NTLM = False
 
+## check requests credssp
 try:
     from requests_credssp import HttpCredSSPAuth
-
     HAS_CREDSSP = True
-except ImportError as ie:
+except ImportError as e:
+    package='requests-credssp'
+    pip.main(['install',package])
+    package='pywinrm[credssp]'
+    pip.main(['install',package])
+    HAS_CREDSSP = False
+try:
+    from requests_credssp import HttpCredSSPAuth
+    HAS_CREDSSP = True
+except ImportError as e:
     HAS_CREDSSP = False
 
+## check pexpect
 try:
     import pexpect
-
+    if hasattr(pexpect, 'spawn'):
+        argspec = getargspec(pexpect.spawn.__init__)
+        if 'echo' in argspec.args:
+            HAS_PEXPECT = True
+except ImportError as e:
+        package='pexpect'
+        pip.main(['install',package])
+        HAS_PEXPECT = False
+try:
+    import pexpect
     if hasattr(pexpect, 'spawn'):
         argspec = getargspec(pexpect.spawn.__init__)
         if 'echo' in argspec.args:
@@ -82,11 +136,21 @@ try:
 except ImportError as e:
     HAS_PEXPECT = False
 
+## remove pip module
+del pip
+
+## log level
+try:
+    from urllib3.connectionpool import log
+    log.addFilter(SuppressFilter())
+except:
+    pass
+
+log_level = 'INFO'
 if os.environ.get('RD_JOB_LOGLEVEL') == 'DEBUG':
     log_level = 'DEBUG'
 else:
-    log_level = 'INFO'
-
+    log_level = 'ERROR'
 ##end
 
 console = logging.StreamHandler()
@@ -231,28 +295,32 @@ log.debug("exit Behaviour:" + exitBehaviour)
 log.debug("cleanescapingflg: " + str(cleanescapingflg))
 log.debug("------------------------------------------")
 
+if not REQUESTS_INSTALLED:
+    log.error("requests is not installed, try: python -m pip install requests")
+    sys.exit(1)
+
 if not URLLIB_INSTALLED:
-    log.error("request and urllib3 not installed, try: pip install requests &&  pip install urllib3")
+    log.error("urllib3 is not installed, try: python -m pip install urllib3")
     sys.exit(1)
 
 if not WINRM_INSTALLED:
-    log.error("winrm not installed, try: pip install pywinrm")
+    log.error("winrm is not installed, try: python -m pip install pywinrm")
     sys.exit(1)
 
 if authentication == "kerberos" and not KRB_INSTALLED:
-    log.error("Kerberos not installed, try: pip install requests-kerberos")
+    log.error("Kerberos is not installed, try: python -m pip install pywinrm[kerberos]")
     sys.exit(1)
 
 if authentication == "kerberos" and not HAS_PEXPECT:
-    log.error("pexpect not installed, try: pip install pexpect")
+    log.error("pexpect is not installed, try: python -m pip install pexpect")
     sys.exit(1)
 
 if authentication == "credssp" and not HAS_CREDSSP:
-    log.error("CredSSP not installed, try: pip install pywinrm[credssp]")
+    log.error("CredSSP is not installed, try: python -m pip install pywinrm[credssp]")
     sys.exit(1)
 
 if authentication == "ntlm" and not HAS_NTLM:
-    log.error("NTLM not installed, try: pip install requests_ntlm")
+    log.error("NTLM is not installed, try: python -m pip install requests_ntlm")
     sys.exit(1)
 
 arguments = {}
