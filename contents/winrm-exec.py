@@ -135,6 +135,9 @@ forcefail = False
 exitBehaviour = "console"
 cleanescapingflg = False
 enabledHttpDebug = False
+retryconnection = 1
+retryconnectiondelay = 0
+username = None
 
 if "RD_CONFIG_AUTHTYPE" in os.environ:
     authentication = os.getenv("RD_CONFIG_AUTHTYPE")
@@ -186,6 +189,12 @@ if "RD_CONFIG_ENABLEDHTTPDEBUG" in os.environ:
         enabledHttpDebug = True
     else:
         enabledHttpDebug = False
+
+if "RD_CONFIG_RETRYCONNECTION" in os.environ:
+    retryconnection = int(os.getenv("RD_CONFIG_RETRYCONNECTION"))
+
+if "RD_CONFIG_RETRYCONNECTIONDELAY" in os.environ:
+    retryconnectiondelay = int(os.getenv("RD_CONFIG_RETRYCONNECTIONDELAY"))
 
 exec_command = os.getenv("RD_EXEC_COMMAND")
 log.debug("Command will be executed: " + exec_command)
@@ -243,8 +252,8 @@ log.debug("authentication:" + authentication)
 log.debug("username:" + username)
 log.debug("nossl:" + str(nossl))
 log.debug("diabletls12:" + str(diabletls12))
-log.debug("krb5config:" + krb5config)
-log.debug("kinit command:" + kinit)
+log.debug("krb5config:" + str(krb5config))
+log.debug("kinit command:" + str(kinit))
 log.debug("kerberos delegation:" + str(krbdelegation))
 log.debug("shell:" + shell)
 log.debug("output_charset:" + output_charset)
@@ -253,6 +262,8 @@ log.debug("operationtimeout:" + str(operationtimeout))
 log.debug("exit Behaviour:" + exitBehaviour)
 log.debug("cleanescapingflg: " + str(cleanescapingflg))
 log.debug("enabledHttpDebug: " + str(enabledHttpDebug))
+log.debug("retryConnection: " + str(retryconnection))
+log.debug("retryConnectionDelay: " + str(retryconnectiondelay))
 log.debug("------------------------------------------")
 
 if enabledHttpDebug:
@@ -314,7 +325,7 @@ winrm.Session.run_ps = winrm_session.run_ps
 winrm.Session._clean_error_msg = winrm_session._clean_error_msg
 winrm.Session._strip_namespace = winrm_session._strip_namespace
 
-tsk = winrm_session.RunCommand(session, shell, exec_command, output_charset)
+tsk = winrm_session.RunCommand(session, shell, exec_command, retryconnection, retryconnectiondelay, output_charset)
 t = threading.Thread(target=tsk.get_response)
 t.start()
 realstdout = sys.stdout

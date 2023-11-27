@@ -1,10 +1,14 @@
 from __future__ import unicode_literals
 import xml.etree.ElementTree as ET
+
 try:
-	import os; os.environ['PATH']
+    import os;
+
+    os.environ['PATH']
 except:
-	import os
-	os.environ.setdefault('PATH', '')
+    import os
+
+    os.environ.setdefault('PATH', '')
 try:
     from StringIO import StringIO
 except ImportError:
@@ -24,6 +28,9 @@ import base64
 import sys
 import types
 import re
+import time
+import logging
+from requests import ConnectionError
 
 PY2 = sys.version_info[0] == 2
 PY3 = sys.version_info[0] == 3
@@ -46,20 +53,40 @@ else:
     text_type = unicode
     binary_type = str
 
+log = logging.getLogger()
 
 # TODO: this PR https://github.com/diyan/pywinrm/pull/55 will add this fix.
 # when this PR is merged, this won't be needed anymore
-def run_cmd(self, command, args=(), out_stream=None, err_stream=None, output_charset='utf-8'):
+def run_cmd(self, command, args=(), out_stream=None, err_stream=None, retry=1, retry_delay=0, output_charset='utf-8'):
     self.protocol.get_command_output = protocol.get_command_output
     winrm.Session._clean_error_msg = self._clean_error_msg
+
+    retryCount = 0
 
     envs = {}
     for a in os.environ:
         if a.startswith(RD) and INVALID_CHAR not in os.environ[a]:
-           envs.update({a:os.getenv(a)})
+            envs.update({a: os.getenv(a)})
 
-    # TODO optimize perf. Do not call open/close shell every time
-    shell_id = self.protocol.open_shell(codepage=65001, env_vars=envs)
+    shell_id = None
+
+    while retryCount < retry:
+        try:
+            shell_id = self.protocol.open_shell(codepage=65001, env_vars=envs)
+            break
+        except ConnectionError as e:
+            if retryCount < retry:
+                retryCount += 1
+                log.debug("error connecting " + str(e))
+                log.debug("Retrying connection " + str(retryCount) + "/" + str(retry) + " in " + str(retry_delay) + " seconds")
+                time.sleep(retry_delay)
+            else:
+                break
+
+
+    if shell_id is None:
+        raise Exception("Connection failed after {0} retries".format(retry))
+
     command_id = self.protocol.run_command(shell_id, command, args)
     rs = Response(self.protocol.get_command_output(self.protocol, shell_id, command_id, out_stream, err_stream))
 
@@ -71,19 +98,24 @@ def run_cmd(self, command, args=(), out_stream=None, err_stream=None, output_cha
     return rs
 
 
-def run_ps(self, script, out_stream=None, err_stream=None, output_charset='utf-8'):
+def run_ps(self, script, out_stream=None, err_stream=None, retry=1, retry_delay=0, output_charset='utf-8'):
     """base64 encodes a Powershell script and executes the powershell
     encoded script command
     """
     script = to_text(script)
     encoded_ps = base64.b64encode(script.encode('utf_16_le')).decode('ascii')
-    rs = self.run_cmd('powershell -encodedcommand {0}'.format(encoded_ps),out_stream=out_stream, err_stream=err_stream, output_charset=output_charset)
+    rs = self.run_cmd('powershell -encodedcommand {0}'.format(encoded_ps),
+                      out_stream=out_stream,
+                      err_stream=err_stream,
+                      output_charset=output_charset,
+                      retry=retry,
+                      retry_delay=retry_delay)
 
     return rs
 
 
 def _clean_error_msg(self, msg, encoding='utf-8'):
-    #data=""
+    # data=""
     msg = to_text(msg, encoding)
 
     if msg.startswith("#< CLIXML") or "<Objs Version=" in msg or "-1</PI><PC>" in msg:
@@ -114,6 +146,7 @@ def _clean_error_msg(self, msg, encoding='utf-8'):
 
     return msg
 
+
 def _strip_namespace(self, xml):
     """strips any namespaces from an xml string"""
     value = to_bytes(xml)
@@ -123,8 +156,10 @@ def _strip_namespace(self, xml):
         value = value.replace(match.group(), b"")
     return value
 
+
 class Response(object):
     """Response from a remote command execution"""
+
     def __init__(self, args):
         self.std_out, self.std_err, self.status_code = args
 
@@ -135,7 +170,7 @@ class Response(object):
 
 
 class RunCommand:
-    def __init__(self, session, shell, command, output_charset='utf-8'):
+    def __init__(self, session, shell, command, retry, retry_delay, output_charset='utf-8'):
         self.stat, self.o_std, self.e_std = None, None, None
         self.o_stream = BytesIO()
         self.e_stream = BytesIO()
@@ -143,24 +178,28 @@ class RunCommand:
         self.exec_command = command
         self.shell = shell
         self.output_charset = output_charset
+        self.retry = retry
+        self.retry_delay = retry_delay
 
     def get_response(self):
         try:
             if self.shell == "cmd":
-                response = self.session.run_cmd(self.exec_command, out_stream=self.o_stream, err_stream=self.e_stream, output_charset=self.output_charset)
+                response = self.session.run_cmd(self.exec_command, out_stream=self.o_stream, err_stream=self.e_stream,
+                                                output_charset=self.output_charset, retry=self.retry, retry_delay=self.retry_delay)
                 self.o_std = response.std_out
                 self.e_std = response.std_err
                 self.stat = response.status_code
 
             if self.shell == "powershell":
-                response = self.session.run_ps(self.exec_command, out_stream=self.o_stream, err_stream=self.e_stream, output_charset=self.output_charset)
+                response = self.session.run_ps(self.exec_command, out_stream=self.o_stream, err_stream=self.e_stream,
+                                               output_charset=self.output_charset, retry=self.retry, retry_delay=self.retry_delay)
                 self.o_std = response.std_out
                 self.e_std = response.std_err
                 self.stat = response.status_code
 
         except Exception as e:
             self.e_std = e
-            self.stat=-1
+            self.stat = -1
 
 
 def to_text(obj, encoding='utf-8', errors="ignore"):
@@ -181,4 +220,3 @@ def to_bytes(obj, encoding='utf-8', errors="ignore"):
             return obj.encode(encoding, errors)
         except UnicodeEncodeError:
             raise
-
