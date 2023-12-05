@@ -256,6 +256,8 @@ krbdelegation = False
 forceTicket = False
 override=False
 enabledHttpDebug = False
+readtimeout = None
+operationtimeout = None
 
 if os.environ.get('RD_CONFIG_OVERRIDE') == 'true':
     override = True
@@ -325,8 +327,8 @@ if "RD_CONFIG_READTIMEOUT" in os.environ:
 if "RD_CONFIG_OPERATIONTIMEOUT" in os.environ:
     operationtimeout = os.getenv("RD_CONFIG_OPERATIONTIMEOUT")
 
-if "RD_CONFIG_ENABLEHTTPDEBUG" in os.environ:
-    if os.getenv("RD_CONFIG_ENABLEHTTPDEBUG") == "true":
+if "RD_CONFIG_ENABLEDHTTPDEBUG" in os.environ:
+    if os.getenv("RD_CONFIG_ENABLEDHTTPDEBUG") == "true":
         enabledHttpDebug = True
     else:
         enabledHttpDebug = False
@@ -335,7 +337,6 @@ if enabledHttpDebug:
     httpclient_logging_patch(logging.DEBUG)
 
 endpoint = transport+'://'+args.hostname+':'+port
-
 arguments = {}
 arguments["transport"] = authentication
 

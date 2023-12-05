@@ -181,8 +181,8 @@ if "RD_CONFIG_CLEANESCAPING" in os.environ:
      else:
         cleanescapingflg = False
 
-if "RD_CONFIG_ENABLEHTTPDEBUG" in os.environ:
-    if os.getenv("RD_CONFIG_ENABLEHTTPDEBUG") == "true":
+if "RD_CONFIG_ENABLEDHTTPDEBUG" in os.environ:
+    if os.getenv("RD_CONFIG_ENABLEDHTTPDEBUG") == "true":
         enabledHttpDebug = True
     else:
         enabledHttpDebug = False
