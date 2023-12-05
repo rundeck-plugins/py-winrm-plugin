@@ -19,9 +19,21 @@ class SuppressFilter(logging.Filter):
 
 try:
     from urllib3.connectionpool import log
-    log.addFilter(SuppressFilter())
+    #log.addFilter(SuppressFilter())
 except:
     pass
+
+import http.client
+httpclient_logger = logging.getLogger("http.client")
+
+
+def httpclient_logging_patch(level=logging.DEBUG):
+    def httpclient_log(*args):
+        httpclient_logger.log(level, " ".join(args))
+
+    http.client.print = httpclient_log
+    http.client.HTTPConnection.debuglevel = 1
+
 
 #checking and importing dependencies
 ISPY3 = sys.version_info[0] == 3
@@ -96,6 +108,10 @@ log = logging.getLogger()
 log.addHandler(console)
 log.setLevel(log_level)
 
+requests_log = logging.getLogger("requests.packages.urllib3")
+requests_log.setLevel(logging.DEBUG)
+requests_log.propagate = True
+
 parser = argparse.ArgumentParser(description='Run Bolt command.')
 parser.add_argument('hostname', help='the hostname')
 args = parser.parse_args()
@@ -118,6 +134,7 @@ operationtimeout = None
 forcefail = False
 exitBehaviour = "console"
 cleanescapingflg = False
+enabledHttpDebug = False
 
 if "RD_CONFIG_AUTHTYPE" in os.environ:
     authentication = os.getenv("RD_CONFIG_AUTHTYPE")
@@ -163,6 +180,12 @@ if "RD_CONFIG_CLEANESCAPING" in os.environ:
         cleanescapingflg = True
      else:
         cleanescapingflg = False
+
+if "RD_CONFIG_ENABLEHTTPDEBUG" in os.environ:
+    if os.getenv("RD_CONFIG_ENABLEHTTPDEBUG") == "true":
+        enabledHttpDebug = True
+    else:
+        enabledHttpDebug = False
 
 exec_command = os.getenv("RD_EXEC_COMMAND")
 log.debug("Command will be executed: " + exec_command)
@@ -229,7 +252,11 @@ log.debug("readtimeout:" + str(readtimeout))
 log.debug("operationtimeout:" + str(operationtimeout))
 log.debug("exit Behaviour:" + exitBehaviour)
 log.debug("cleanescapingflg: " + str(cleanescapingflg))
+log.debug("enabledHttpDebug: " + str(enabledHttpDebug))
 log.debug("------------------------------------------")
+
+if enabledHttpDebug:
+    httpclient_logging_patch(logging.DEBUG)
 
 if not URLLIB_INSTALLED:
     log.error("request and urllib3 not installed, try: pip install requests &&  pip install urllib3")

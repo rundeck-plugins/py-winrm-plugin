@@ -15,6 +15,7 @@ import xml.etree.ElementTree as ET
 import colored_formatter
 from colored_formatter import ColoredFormatter
 import kerberosauth
+import http.client
 
 #checking and importing dependencies
 ISPY3 = sys.version_info[0] == 3
@@ -81,14 +82,7 @@ if os.environ.get('RD_JOB_LOGLEVEL') == 'DEBUG':
 else:
     log_level = 'ERROR'
 
-##end
-
-
-log_level = 'INFO'
-if os.environ.get('RD_JOB_LOGLEVEL') == 'DEBUG':
-    log_level = 'DEBUG'
-else:
-    log_level = 'ERROR'
+# end
 
 console = logging.StreamHandler()
 console.setFormatter(ColoredFormatter(colored_formatter.format()))
@@ -97,6 +91,17 @@ console.stream=sys.stdout
 log = logging.getLogger()
 log.addHandler(console)
 log.setLevel(log_level)
+
+httpclient_logger = logging.getLogger("http.client")
+
+
+def httpclient_logging_patch(level=logging.DEBUG):
+    def httpclient_log(*args):
+        httpclient_logger.log(level, " ".join(args))
+
+    http.client.print = httpclient_log
+    http.client.HTTPConnection.debuglevel = 1
+
 
 def _clean_error_msg(self, msg):
     """converts a Powershell CLIXML message to a more human readable string
@@ -250,6 +255,7 @@ krb5config = None
 krbdelegation = False
 forceTicket = False
 override=False
+enabledHttpDebug = False
 
 if os.environ.get('RD_CONFIG_OVERRIDE') == 'true':
     override = True
@@ -313,6 +319,21 @@ if "RD_CONFIG_KRBDELEGATION" in os.environ:
     else:
         krbdelegation = False
 
+if "RD_CONFIG_READTIMEOUT" in os.environ:
+    readtimeout = os.getenv("RD_CONFIG_READTIMEOUT")
+
+if "RD_CONFIG_OPERATIONTIMEOUT" in os.environ:
+    operationtimeout = os.getenv("RD_CONFIG_OPERATIONTIMEOUT")
+
+if "RD_CONFIG_ENABLEHTTPDEBUG" in os.environ:
+    if os.getenv("RD_CONFIG_ENABLEHTTPDEBUG") == "true":
+        enabledHttpDebug = True
+    else:
+        enabledHttpDebug = False
+
+if enabledHttpDebug:
+    httpclient_logging_patch(logging.DEBUG)
+
 endpoint = transport+'://'+args.hostname+':'+port
 
 arguments = {}
@@ -327,6 +348,11 @@ else:
 
 arguments["credssp_disable_tlsv1_2"] = diabletls12
 
+if(readtimeout):
+    arguments["read_timeout_sec"] = readtimeout
+
+if(operationtimeout):
+    arguments["operation_timeout_sec"] = operationtimeout
 
 if not URLLIB_INSTALLED:
     log.error("request and urllib3 not installed, try: pip install requests &&  pip install urllib3")

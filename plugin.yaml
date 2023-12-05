@@ -183,6 +183,16 @@ providers:
         renderingOptions:
           groupName: Misc
           instance-scope-node-attribute: "clean-escaping"
+      - name: enabledhttpdebug
+        title: Enable HTTP logging in debug mode
+        description: "Print extra http logging in debug mode"
+        type: Boolean
+        default: "false"
+        required: true
+        scope: Instance
+        renderingOptions:
+          groupName: Connection
+          instance-scope-node-attribute: "winrm-enable-http-logging"
   - name: WinRMcpPython
     title: WinRM Python File Copier
     description: Copying files to remote Windows computer
@@ -262,6 +272,24 @@ providers:
         renderingOptions:
           groupName: Connection
           instance-scope-node-attribute: "winrm-certpath"
+      - name: readtimeout
+        title: connect/read times out
+        description: "maximum seconds to wait before an HTTP connect/read times out (default 30). This value should be slightly higher than operation timeout, as the server can block *at least* that long. It can be overwriting at node level using `winrm-readtimeout`"
+        type: String
+        required: false
+        scope: Instance
+        renderingOptions:
+          groupName: Connection
+          instance-scope-node-attribute: "winrm-readtimeout"
+      - name: operationtimeout
+        title: operation timeout
+        description: "maximum allowed time in seconds for any single wsman HTTP operation (default 20). Note that operation timeouts while receiving output (the only wsman operation that should take any significant time, and where these timeouts are expected) will be silently retried indefinitely. It can be overwriting at node level using `winrm-operationtimeout`"
+        type: String
+        required: false
+        scope: Instance
+        renderingOptions:
+          groupName: Connection
+          instance-scope-node-attribute: "winrm-operationtimeout"
       - name: username
         title: Username
         type: String
@@ -314,6 +342,16 @@ providers:
         required: false
         renderingOptions:
           groupName: Kerberos
+      - name: enabledhttpdebug
+        title: Enable HTTP logging in debug mode
+        description: "Print extra http logging in debug mode"
+        type: Boolean
+        default: "false"
+        required: true
+        scope: Instance
+        renderingOptions:
+          groupName: Connection
+          instance-scope-node-attribute: "winrm-enable-http-logging"
   - name: WinRMCheck
     title: WinRM Check Step
     description: Check the connection with a remote node using winrm-python
