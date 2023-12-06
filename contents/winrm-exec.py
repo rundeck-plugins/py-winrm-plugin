@@ -273,7 +273,7 @@ if(readtimeout):
     arguments["read_timeout_sec"] = readtimeout
 
 if(winrmproxy):
-    arguments["winrm_proxy"] = winrmproxy
+    arguments["proxy"] = winrmproxy
 
 if(operationtimeout):
     arguments["operation_timeout_sec"] = operationtimeout
