@@ -278,6 +278,9 @@ if "RD_CONFIG_DISABLETLS12" in os.environ:
 if "RD_CONFIG_CERTPATH" in os.environ:
     certpath = os.getenv("RD_CONFIG_CERTPATH")
 
+if "RD_CONFIG_WINRMPROXY" in os.environ:
+    winrmproxy = os.getenv("RD_CONFIG_WINRMPROXY")
+
 if "RD_OPTION_USERNAME" in os.environ and os.getenv("RD_OPTION_USERNAME"):
     #take user from job
     username = os.getenv("RD_OPTION_USERNAME").strip('\'')
@@ -327,6 +330,8 @@ else:
 
 arguments["credssp_disable_tlsv1_2"] = diabletls12
 
+if(winrmproxy):
+    arguments["proxy"] = winrmproxy
 
 if not URLLIB_INSTALLED:
     log.error("request and urllib3 not installed, try: pip install requests &&  pip install urllib3")
