@@ -101,6 +101,15 @@ providers:
         renderingOptions:
           groupName: Connection
           instance-scope-node-attribute: "winrm-readtimeout"
+      - name: winrmproxy
+        title: Proxy
+        description: "Specify a proxy address for communicating with Windows nodes. Example HTTP proxy strings are http://server:port and http://user:pass@server:port. An example SOCKS5 proxy string is socks5://user:pass@server:port."
+        type: String
+        required: false
+        scope: Instance
+        renderingOptions:
+          groupName: Connection
+          instance-scope-node-attribute: "winrm-proxy"
       - name: operationtimeout
         title: operation timeout
         description: "maximum allowed time in seconds for any single wsman HTTP operation (default 20). Note that operation timeouts while receiving output (the only wsman operation that should take any significant time, and where these timeouts are expected) will be silently retried indefinitely. It can be overwriting at node level using `winrm-operationtimeout`"

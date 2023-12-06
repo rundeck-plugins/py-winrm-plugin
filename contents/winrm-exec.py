@@ -164,6 +164,9 @@ if "RD_CONFIG_CLEANESCAPING" in os.environ:
      else:
         cleanescapingflg = False
 
+if "RD_CONFIG_WINRMPROXY" in os.environ:
+    winrmproxy = os.getenv("RD_CONFIG_WINRMPROXY")
+
 exec_command = os.getenv("RD_EXEC_COMMAND")
 log.debug("Command will be executed: " + exec_command)
 
@@ -229,6 +232,7 @@ log.debug("readtimeout:" + str(readtimeout))
 log.debug("operationtimeout:" + str(operationtimeout))
 log.debug("exit Behaviour:" + exitBehaviour)
 log.debug("cleanescapingflg: " + str(cleanescapingflg))
+log.debug("winrmproxy: " + str(winrmproxy))
 log.debug("------------------------------------------")
 
 if not URLLIB_INSTALLED:
@@ -267,6 +271,9 @@ else:
 
 if(readtimeout):
     arguments["read_timeout_sec"] = readtimeout
+
+if(winrmproxy):
+    arguments["winrm_proxy"] = winrmproxy
 
 if(operationtimeout):
     arguments["operation_timeout_sec"] = operationtimeout
