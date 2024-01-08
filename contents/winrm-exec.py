@@ -19,9 +19,21 @@ class SuppressFilter(logging.Filter):
 
 try:
     from urllib3.connectionpool import log
-    log.addFilter(SuppressFilter())
+    #log.addFilter(SuppressFilter())
 except:
     pass
+
+import http.client
+httpclient_logger = logging.getLogger("http.client")
+
+
+def httpclient_logging_patch(level=logging.DEBUG):
+    def httpclient_log(*args):
+        httpclient_logger.log(level, " ".join(args))
+
+    http.client.print = httpclient_log
+    http.client.HTTPConnection.debuglevel = 1
+
 
 #checking and importing dependencies
 ISPY3 = sys.version_info[0] == 3
@@ -96,6 +108,10 @@ log = logging.getLogger()
 log.addHandler(console)
 log.setLevel(log_level)
 
+requests_log = logging.getLogger("requests.packages.urllib3")
+requests_log.setLevel(logging.DEBUG)
+requests_log.propagate = True
+
 parser = argparse.ArgumentParser(description='Run Bolt command.')
 parser.add_argument('hostname', help='the hostname')
 args = parser.parse_args()
@@ -118,6 +134,10 @@ operationtimeout = None
 forcefail = False
 exitBehaviour = "console"
 cleanescapingflg = False
+enabledHttpDebug = False
+retryconnection = 1
+retryconnectiondelay = 0
+username = None
 
 if "RD_CONFIG_AUTHTYPE" in os.environ:
     authentication = os.getenv("RD_CONFIG_AUTHTYPE")
@@ -166,6 +186,18 @@ if "RD_CONFIG_CLEANESCAPING" in os.environ:
 
 if "RD_CONFIG_WINRMPROXY" in os.environ:
     winrmproxy = os.getenv("RD_CONFIG_WINRMPROXY")
+
+if "RD_CONFIG_ENABLEDHTTPDEBUG" in os.environ:
+    if os.getenv("RD_CONFIG_ENABLEDHTTPDEBUG") == "true":
+        enabledHttpDebug = True
+    else:
+        enabledHttpDebug = False
+
+if "RD_CONFIG_RETRYCONNECTION" in os.environ:
+    retryconnection = int(os.getenv("RD_CONFIG_RETRYCONNECTION"))
+
+if "RD_CONFIG_RETRYCONNECTIONDELAY" in os.environ:
+    retryconnectiondelay = int(os.getenv("RD_CONFIG_RETRYCONNECTIONDELAY"))
 
 exec_command = os.getenv("RD_EXEC_COMMAND")
 log.debug("Command will be executed: " + exec_command)
@@ -223,8 +255,8 @@ log.debug("authentication:" + authentication)
 log.debug("username:" + username)
 log.debug("nossl:" + str(nossl))
 log.debug("diabletls12:" + str(diabletls12))
-log.debug("krb5config:" + krb5config)
-log.debug("kinit command:" + kinit)
+log.debug("krb5config:" + str(krb5config))
+log.debug("kinit command:" + str(kinit))
 log.debug("kerberos delegation:" + str(krbdelegation))
 log.debug("shell:" + shell)
 log.debug("output_charset:" + output_charset)
@@ -233,7 +265,13 @@ log.debug("operationtimeout:" + str(operationtimeout))
 log.debug("exit Behaviour:" + exitBehaviour)
 log.debug("cleanescapingflg: " + str(cleanescapingflg))
 log.debug("winrmproxy: " + str(winrmproxy))
+log.debug("enabledHttpDebug: " + str(enabledHttpDebug))
+log.debug("retryConnection: " + str(retryconnection))
+log.debug("retryConnectionDelay: " + str(retryconnectiondelay))
 log.debug("------------------------------------------")
+
+if enabledHttpDebug:
+    httpclient_logging_patch(logging.DEBUG)
 
 if not URLLIB_INSTALLED:
     log.error("request and urllib3 not installed, try: pip install requests &&  pip install urllib3")
@@ -294,7 +332,7 @@ winrm.Session.run_ps = winrm_session.run_ps
 winrm.Session._clean_error_msg = winrm_session._clean_error_msg
 winrm.Session._strip_namespace = winrm_session._strip_namespace
 
-tsk = winrm_session.RunCommand(session, shell, exec_command, output_charset)
+tsk = winrm_session.RunCommand(session, shell, exec_command, retryconnection, retryconnectiondelay, output_charset)
 t = threading.Thread(target=tsk.get_response)
 t.start()
 realstdout = sys.stdout
