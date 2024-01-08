@@ -15,8 +15,10 @@ import xml.etree.ElementTree as ET
 import colored_formatter
 from colored_formatter import ColoredFormatter
 import kerberosauth
+import http.client
+import winrm_session
 
-#checking and importing dependencies
+# checking and importing dependencies
 ISPY3 = sys.version_info[0] == 3
 WINRM_INSTALLED = False
 URLLIB_INSTALLED = False
@@ -81,14 +83,7 @@ if os.environ.get('RD_JOB_LOGLEVEL') == 'DEBUG':
 else:
     log_level = 'ERROR'
 
-##end
-
-
-log_level = 'INFO'
-if os.environ.get('RD_JOB_LOGLEVEL') == 'DEBUG':
-    log_level = 'DEBUG'
-else:
-    log_level = 'ERROR'
+# end
 
 console = logging.StreamHandler()
 console.setFormatter(ColoredFormatter(colored_formatter.format()))
@@ -97,6 +92,17 @@ console.stream=sys.stdout
 log = logging.getLogger()
 log.addHandler(console)
 log.setLevel(log_level)
+
+httpclient_logger = logging.getLogger("http.client")
+
+
+def httpclient_logging_patch(level=logging.DEBUG):
+    def httpclient_log(*args):
+        httpclient_logger.log(level, " ".join(args))
+
+    http.client.print = httpclient_log
+    http.client.HTTPConnection.debuglevel = 1
+
 
 def _clean_error_msg(self, msg):
     """converts a Powershell CLIXML message to a more human readable string
@@ -165,8 +171,10 @@ class WinRmError(RemoteCommandError):
 
 class CopyFiles(object):
 
-    def __init__(self, session):
-        self.session=session
+    def __init__(self, session, retry, retry_delay):
+        self.session = session
+        self.retry = retry
+        self.retry_delay = retry_delay
 
 
     def winrm_upload(self,
@@ -184,10 +192,12 @@ class CopyFiles(object):
 
         print("coping file %s to %s" % (local_path, full_path))
 
-        self.session.run_ps('if (!(Test-Path {0})) {{ New-Item -ItemType directory -Path {0} }}'.format(remote_path))
+        self.session.run_ps('if (!(Test-Path {0})) {{ New-Item -ItemType directory -Path {0} }}'.format(remote_path),
+                            retry=self.retry,
+                            retry_delay=self.retry_delay)
 
-        if(override):
-            self.session.run_ps('if ((Test-Path {0} -PathType Leaf)) {{ rm {0} }}'.format(full_path))
+        if override:
+            self.session.run_ps('if ((Test-Path {0} -PathType Leaf)) {{ rm {0} }}'.format(full_path), retry=self.retry, retry_delay=self.retry_delay)
 
         size = os.stat(local_path).st_size
         with open(local_path, 'rb') as f:
@@ -250,6 +260,13 @@ krb5config = None
 krbdelegation = False
 forceTicket = False
 override=False
+enabledHttpDebug = False
+readtimeout = None
+operationtimeout = None
+retryconnection = 1
+retryconnectiondelay = 0
+certpath = None
+username = None
 
 if os.environ.get('RD_CONFIG_OVERRIDE') == 'true':
     override = True
@@ -313,10 +330,29 @@ if "RD_CONFIG_KRBDELEGATION" in os.environ:
     else:
         krbdelegation = False
 
-endpoint = transport+'://'+args.hostname+':'+port
+if "RD_CONFIG_READTIMEOUT" in os.environ:
+    readtimeout = os.getenv("RD_CONFIG_READTIMEOUT")
 
-arguments = {}
-arguments["transport"] = authentication
+if "RD_CONFIG_OPERATIONTIMEOUT" in os.environ:
+    operationtimeout = os.getenv("RD_CONFIG_OPERATIONTIMEOUT")
+
+if "RD_CONFIG_ENABLEDHTTPDEBUG" in os.environ:
+    if os.getenv("RD_CONFIG_ENABLEDHTTPDEBUG") == "true":
+        enabledHttpDebug = True
+    else:
+        enabledHttpDebug = False
+
+if "RD_CONFIG_RETRYCONNECTION" in os.environ:
+    retryconnection = int(os.getenv("RD_CONFIG_RETRYCONNECTION"))
+
+if "RD_CONFIG_RETRYCONNECTIONDELAY" in os.environ:
+    retryconnectiondelay = int(os.getenv("RD_CONFIG_RETRYCONNECTIONDELAY"))
+
+if enabledHttpDebug:
+    httpclient_logging_patch(logging.DEBUG)
+
+endpoint = transport+'://'+args.hostname+':'+port
+arguments = {"transport": authentication}
 
 if(nossl == True):
     arguments["server_cert_validation"] = "ignore"
@@ -327,6 +363,11 @@ else:
 
 arguments["credssp_disable_tlsv1_2"] = diabletls12
 
+if(readtimeout):
+    arguments["read_timeout_sec"] = readtimeout
+
+if(operationtimeout):
+    arguments["operation_timeout_sec"] = operationtimeout
 
 if not URLLIB_INSTALLED:
     log.error("request and urllib3 not installed, try: pip install requests &&  pip install urllib3")
@@ -361,10 +402,12 @@ session = winrm.Session(target=endpoint,
                         auth=(username, password),
                         **arguments)
 
+winrm.Session.run_cmd = winrm_session.run_cmd
+winrm.Session.run_ps = winrm_session.run_ps
+winrm.Session._clean_error_msg = winrm_session._clean_error_msg
+winrm.Session._strip_namespace = winrm_session._strip_namespace
 
-winrm.Session._clean_error_msg = _clean_error_msg
-
-copy = CopyFiles(session)
+copy = CopyFiles(session, retryconnection, retryconnectiondelay)
 
 destination = args.destination
 filename = ntpath.basename(args.destination)
