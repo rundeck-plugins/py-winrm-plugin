@@ -186,6 +186,7 @@ if "RD_CONFIG_CLEANESCAPING" in os.environ:
 
 if "RD_CONFIG_WINRMPROXY" in os.environ:
     winrmproxy = os.getenv("RD_CONFIG_WINRMPROXY")
+    log.debug("winrmproxy: " + str(winrmproxy))
 
 if "RD_CONFIG_ENABLEDHTTPDEBUG" in os.environ:
     if os.getenv("RD_CONFIG_ENABLEDHTTPDEBUG") == "true":
@@ -264,7 +265,6 @@ log.debug("readtimeout:" + str(readtimeout))
 log.debug("operationtimeout:" + str(operationtimeout))
 log.debug("exit Behaviour:" + exitBehaviour)
 log.debug("cleanescapingflg: " + str(cleanescapingflg))
-log.debug("winrmproxy: " + str(winrmproxy))
 log.debug("enabledHttpDebug: " + str(enabledHttpDebug))
 log.debug("retryConnection: " + str(retryconnection))
 log.debug("retryConnectionDelay: " + str(retryconnectiondelay))
