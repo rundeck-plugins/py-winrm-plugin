@@ -375,6 +375,8 @@ providers:
         title: Proxy
         description: "Specify a proxy address for communicating with Windows nodes. Example HTTP proxy strings are http://server:port and http://user:pass@server:port. An example SOCKS5 proxy string is socks5://user:pass@server:port."
         type: String
+        required: false
+        scope: Instance
         renderingOptions:
           groupName: Connection
           instance-scope-node-attribute: "winrm-proxy"
