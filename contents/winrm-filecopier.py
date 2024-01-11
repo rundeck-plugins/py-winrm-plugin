@@ -267,6 +267,7 @@ retryconnection = 1
 retryconnectiondelay = 0
 certpath = None
 username = None
+winrmproxy = None
 
 if os.environ.get('RD_CONFIG_OVERRIDE') == 'true':
     override = True
@@ -294,6 +295,9 @@ if "RD_CONFIG_DISABLETLS12" in os.environ:
 
 if "RD_CONFIG_CERTPATH" in os.environ:
     certpath = os.getenv("RD_CONFIG_CERTPATH")
+
+if "RD_CONFIG_WINRMPROXY" in os.environ:
+    winrmproxy = os.getenv("RD_CONFIG_WINRMPROXY")
 
 if "RD_OPTION_USERNAME" in os.environ and os.getenv("RD_OPTION_USERNAME"):
     #take user from job
@@ -362,6 +366,9 @@ else:
         arguments["ca_trust_path"] = certpath
 
 arguments["credssp_disable_tlsv1_2"] = diabletls12
+
+if(winrmproxy):
+    arguments["proxy"] = winrmproxy
 
 if(readtimeout):
     arguments["read_timeout_sec"] = readtimeout
