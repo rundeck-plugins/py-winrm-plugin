@@ -138,6 +138,7 @@ enabledHttpDebug = False
 retryconnection = 1
 retryconnectiondelay = 0
 username = None
+winrmproxy = None
 
 if "RD_CONFIG_AUTHTYPE" in os.environ:
     authentication = os.getenv("RD_CONFIG_AUTHTYPE")
