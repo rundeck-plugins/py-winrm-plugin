@@ -267,6 +267,7 @@ retryconnection = 1
 retryconnectiondelay = 0
 certpath = None
 username = None
+winrmproxy = None
 
 if os.environ.get('RD_CONFIG_OVERRIDE') == 'true':
     override = True
