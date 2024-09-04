@@ -11,6 +11,7 @@ Download from the releases page and copy the py-winrm-plugin-X.X.X.zip to the li
 * Linux, Mac OS X or Windows
 * CPython 2.6-2.7, 3.3-3.5 or PyPy2
 * pywinrm
+* openssl 1.1.1 or higher
 * requests-kerberos and requests-credssp is optional
 
 It can be installed with the following command: `pip install pywinrm` 
@@ -36,6 +37,10 @@ For further information see:
 It can be overwriting at node level using `winrm-readtimeout`
 * **operation timeout**: maximum allowed time in seconds for any single wsman HTTP operation (default 20). Note that operation timeouts while receiving output (the only wsman operation that should take any significant time, and where these timeouts are expected) will be silently retried indefinitely.
 It can be overwriting at node level using `winrm-operationtimeout`
+* **retry connection**: Retry a connection when it fails for connectivity issues (default 1).  
+  It can be overwriting at node level using `winrm-retry-connection`
+* **retry connection**: Delay between retries in seconds (default 10 seconds).
+  It can be overwriting at node level using `winrm-retry-connection-delay`
 
 For Kerberos
 * **krb5 Config File**: path of the krb5.conf (default: /etc/krb5.conf)
