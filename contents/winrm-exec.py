@@ -300,14 +300,12 @@ if SYSTEM_INTERPRETER:
     CREDSSP_ERRORMESSAGE = "{}{}".format(CREDSSP_ERRORMESSAGE_BASE, ERRORMESSAGE)
     NTLM_ERRORMESSAGE = "{}{}".format(NTLM_ERRORMESSAGE_BASE, ERRORMESSAGE)
 else:
-    python_executable_basename = os.path.dirname(sys.executable)
-    python_pip_executable = os.path.join(python_executable_basename, "pip3" if ISPY3 else "pip")
-    URLLIB_ERRORMESSAGE = "{}, try: {} install requests urllib3".format(URLLIB_ERRORMESSAGE_BASE, python_pip_executable)
-    WINRM_ERRORMESSAGE = "{}, try: {} install pywinrm".format(WINRM_ERRORMESSAGE_BASE, python_pip_executable)
-    KRB_ERRORMESSAGE = "{}, try: {} install requests-kerberos".format(KRB_ERRORMESSAGE_BASE, python_pip_executable)
-    PEXPECT_ERRORMESSAGE = "{}, try: {} install pexpect".format(PEXPECT_ERRORMESSAGE_BASE, python_pip_executable)
-    CREDSSP_ERRORMESSAGE = "{}, try: {} install pywinrm[credssp]".format(CREDSSP_ERRORMESSAGE_BASE, python_pip_executable)
-    NTLM_ERRORMESSAGE = "{}, try: {} install requests-ntlm".format(NTLM_ERRORMESSAGE_BASE, python_pip_executable)
+    URLLIB_ERRORMESSAGE = "{}, try: {} -m pip install requests urllib3".format(URLLIB_ERRORMESSAGE_BASE, sys.executable)
+    WINRM_ERRORMESSAGE = "{}, try: {} -m pip install pywinrm".format(WINRM_ERRORMESSAGE_BASE, sys.executable)
+    KRB_ERRORMESSAGE = "{}, try: {} -m pip install requests-kerberos".format(KRB_ERRORMESSAGE_BASE, sys.executable)
+    PEXPECT_ERRORMESSAGE = "{}, try: {} -m pip install pexpect".format(PEXPECT_ERRORMESSAGE_BASE, sys.executable)
+    CREDSSP_ERRORMESSAGE = "{}, try: {} -m pip install pywinrm[credssp]".format(CREDSSP_ERRORMESSAGE_BASE, sys.executable)
+    NTLM_ERRORMESSAGE = "{}, try: {} -m pip install requests-ntlm".format(NTLM_ERRORMESSAGE_BASE, sys.executable)
 
 
 if enabledHttpDebug:
