@@ -25,8 +25,7 @@ providers:
       - name: interpreter
         title: Python Interpreter
         description: "Python Interpreter (Default: python)"
-        type: Select
-        values: "python,python2,python3"
+        type: String
         default: "python"
         required: true
         scope: Instance
