@@ -1,9 +1,9 @@
 import argparse
 try:
-	import os; os.environ['PATH']
+    import os; os.environ['PATH']
 except:
-	import os
-	os.environ.setdefault('PATH', '')
+    import os
+    os.environ.setdefault('PATH', '')
 import sys
 import winrm_session
 import threading
@@ -11,7 +11,12 @@ import logging
 import colored_formatter
 import kerberosauth
 import common
+# Add warnings import
+import warnings
 from colored_formatter import ColoredFormatter
+
+# Initialize suppress_warnings variable
+suppress_warnings = False
 
 class SuppressFilter(logging.Filter):
     def filter(self, record):
@@ -19,7 +24,7 @@ class SuppressFilter(logging.Filter):
 
 try:
     from urllib3.connectionpool import log
-    #log.addFilter(SuppressFilter())
+    # We'll use this later when checking suppress_warnings
 except:
     pass
 
@@ -269,7 +274,22 @@ log.debug("cleanescapingflg: " + str(cleanescapingflg))
 log.debug("enabledHttpDebug: " + str(enabledHttpDebug))
 log.debug("retryConnection: " + str(retryconnection))
 log.debug("retryConnectionDelay: " + str(retryconnectiondelay))
+log.debug("suppress_warnings: " + str(suppress_warnings))
 log.debug("------------------------------------------")
+
+# Apply warning suppression if enabled
+if suppress_warnings:
+    # Suppress all warnings
+    warnings.simplefilter("ignore")
+    # Configure logging for urllib3
+    try:
+        from urllib3.connectionpool import log
+        log.addFilter(SuppressFilter())
+        # Disable urllib3 warnings specifically
+        import urllib3
+        urllib3.disable_warnings()
+    except:
+        pass
 
 if enabledHttpDebug:
     httpclient_logging_patch(logging.DEBUG)

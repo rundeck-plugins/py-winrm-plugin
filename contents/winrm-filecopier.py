@@ -17,6 +17,7 @@ from colored_formatter import ColoredFormatter
 import kerberosauth
 import http.client
 import winrm_session
+import warnings
 
 # checking and importing dependencies
 ISPY3 = sys.version_info[0] == 3
@@ -268,6 +269,8 @@ retryconnectiondelay = 0
 certpath = None
 username = None
 winrmproxy = None
+
+suppress_warnings = False
 
 if os.environ.get('RD_CONFIG_OVERRIDE') == 'true':
     override = True

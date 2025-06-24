@@ -204,3 +204,27 @@ Set-ExecutionPolicy -ExecutionPolicy Unrestricted
 
 ## Docker example
 Check these [instructions](docker/README.md) for docker test 
+
+## Warning Suppression
+
+When using the WinRM Python plugin, warnings from the underlying urllib3 library might appear in the output. These warnings can be disruptive, especially when capturing output for use in subsequent steps.
+
+### Configuration
+
+You can suppress these warnings by enabling the **Suppress Python Warnings** option:
+
+1. **Project GUI Configuration**: Add `project.winrm-suppress-warnings=true` to your project configuration
+2. **Node Definition**: Add the attribute `winrm-suppress-warnings: true` to individual node definitions
+3. **Other Configuration**: Enable the "Suppress Python Warnings" checkbox in the plugin configuration
+   1. Set globally: `framework.plugin.NodeExecutor.WinRMPython.suppress_warnings=true`
+   2. Set in Project Configuration: `project.plugin.NodeExecutor.WinRMPython.suppress_warnings=true`
+
+### Example Node Definition
+
+```yaml
+nodename:
+  hostname: windows-server
+  username: admin
+  winrm-suppress-warnings: true
+  ...other attributes...
+```

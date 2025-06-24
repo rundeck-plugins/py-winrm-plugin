@@ -222,6 +222,16 @@ providers:
         renderingOptions:
           groupName: Connection
           instance-scope-node-attribute: "winrm-retry-connection-delay"
+      - name: suppress_warnings
+        title: Suppress Python Warnings
+        description: "When enabled, suppresses urllib3 and other Python warnings in the output"
+        type: Boolean
+        default: "false"
+        required: false
+        scope: Instance
+        renderingOptions:
+          groupName: Misc
+          instance-scope-node-attribute: "winrm-suppress-warnings"
   - name: WinRMcpPython
     title: WinRM Python File Copier
     description: Copying files to remote Windows computer
@@ -410,6 +420,16 @@ providers:
         renderingOptions:
           groupName: Connection
           instance-scope-node-attribute: "winrm-retry-connection-delay"
+      - name: suppress_warnings
+        title: Suppress Python Warnings
+        description: "When enabled, suppresses urllib3 and other Python warnings in the output"
+        type: Boolean
+        default: "false"
+        required: false
+        scope: Instance
+        renderingOptions:
+          groupName: Misc
+          instance-scope-node-attribute: "winrm-suppress-warnings"
   - name: WinRMCheck
     title: WinRM Check Step
     description: Check the connection with a remote node using winrm-python
@@ -513,3 +533,9 @@ providers:
         required: false
         renderingOptions:
           groupName: Kerberos
+      - name: suppress_warnings
+        title: Suppress Python Warnings
+        description: "When enabled, suppresses urllib3 and other Python warnings in the output"
+        type: Boolean
+        default: "false"
+        required: false

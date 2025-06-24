@@ -9,6 +9,7 @@ import logging
 import colored_formatter
 from colored_formatter import ColoredFormatter
 import kerberosauth
+import warnings
 
 
 #checking and importing dependencies
@@ -189,6 +190,14 @@ if "RD_CONFIG_KRBDELEGATION" in os.environ:
     else:
         krbdelegation = False
 
+suppress_warnings = False
+
+if "RD_CONFIG_SUPPRESS_WARNINGS" in os.environ:
+    if os.getenv("RD_CONFIG_SUPPRESS_WARNINGS") == "true":
+        suppress_warnings = True
+    else:
+        suppress_warnings = False
+
 endpoint=transport+'://'+hostname+':'+port
 
 log.debug("------------------------------------------")
@@ -247,6 +256,20 @@ if authentication == "kerberos":
     k5bConfig = kerberosauth.KerberosAuth(krb5config=krb5config, log=log, kinit_command=kinit,username=username, password=password)
     k5bConfig.get_ticket()
     arguments["kerberos_delegation"] = krbdelegation
+
+# Apply warning suppression if enabled
+if suppress_warnings:
+    # Suppress all warnings
+    warnings.simplefilter("ignore")
+    # Configure logging for urllib3
+    try:
+        from urllib3.connectionpool import log
+        log.addFilter(SuppressFilter())
+        # Disable urllib3 warnings specifically
+        import urllib3
+        urllib3.disable_warnings()
+    except:
+        pass
 
 session = winrm.Session(target=endpoint,
                          auth=(username, password),
