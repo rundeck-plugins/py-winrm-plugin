@@ -17,8 +17,10 @@ from colored_formatter import ColoredFormatter
 import kerberosauth
 import http.client
 import winrm_session
+import sysconfig
+import os.path
 
-# checking and importing dependencies
+#checking and importing dependencies
 ISPY3 = sys.version_info[0] == 3
 WINRM_INSTALLED = False
 URLLIB_INSTALLED = False
@@ -26,6 +28,7 @@ KRB_INSTALLED = False
 HAS_NTLM = False
 HAS_CREDSSP = False
 HAS_PEXPECT = False
+SYSTEM_INTERPRETER = False
 
 if ISPY3:
     from inspect import getfullargspec as getargspec
@@ -76,6 +79,12 @@ try:
             HAS_PEXPECT = True
 except ImportError as e:
     HAS_PEXPECT = False
+
+try:
+    externally_managed_path = os.path.join(sysconfig.get_path("stdlib"), "EXTERNALLY-MANAGED")
+    SYSTEM_INTERPRETER = os.path.exists(externally_managed_path)
+except:
+    SYSTEM_INTERPRETER = False
 
 log_level = 'INFO'
 if os.environ.get('RD_JOB_LOGLEVEL') == 'DEBUG':
@@ -376,28 +385,65 @@ if(readtimeout):
 if(operationtimeout):
     arguments["operation_timeout_sec"] = operationtimeout
 
+URLLIB_ERRORMESSAGE_BASE = "requests and urllib3 not installed"
+WINRM_ERRORMESSAGE_BASE = "pywinrm not installed"
+KRB_ERRORMESSAGE_BASE = "requests-kerberos not installed"
+PEXPECT_ERRORMESSAGE_BASE = "pexpect not installed"
+CREDSSP_ERRORMESSAGE_BASE = "pywinrm[credssp] not installed"
+NTLM_ERRORMESSAGE_BASE = "requests-ntlm not installed"
+
+if SYSTEM_INTERPRETER:
+    import configparser
+    externally_managed_file = configparser.RawConfigParser()
+    externally_managed_file.read(externally_managed_path)
+    SYSTEM_INTERPRETER_ERRORMESSAGE=externally_managed_file.get("externally-managed", "Error")
+
+    ERRORMESSAGE = ", please install it using your systems package manager or consider using a virtual environment.\n{}".format(SYSTEM_INTERPRETER_ERRORMESSAGE)
+    URLLIB_ERRORMESSAGE = "{}{}".format(URLLIB_ERRORMESSAGE_BASE, ERRORMESSAGE)
+    WINRM_ERRORMESSAGE = "{}{}".format(WINRM_ERRORMESSAGE_BASE, ERRORMESSAGE)
+    KRB_ERRORMESSAGE = "{}{}".format(KRB_ERRORMESSAGE_BASE, ERRORMESSAGE)
+    PEXPECT_ERRORMESSAGE = "{}{}".format(PEXPECT_ERRORMESSAGE_BASE, ERRORMESSAGE)
+    CREDSSP_ERRORMESSAGE = "{}{}".format(CREDSSP_ERRORMESSAGE_BASE, ERRORMESSAGE)
+    NTLM_ERRORMESSAGE = "{}{}".format(NTLM_ERRORMESSAGE_BASE, ERRORMESSAGE)
+else:
+    URLLIB_ERRORMESSAGE = "{}, try: {} -m pip install requests urllib3".format(URLLIB_ERRORMESSAGE_BASE, sys.executable)
+    WINRM_ERRORMESSAGE = "{}, try: {} -m pip install pywinrm".format(WINRM_ERRORMESSAGE_BASE, sys.executable)
+    KRB_ERRORMESSAGE = "{}, try: {} -m pip install requests-kerberos".format(KRB_ERRORMESSAGE_BASE, sys.executable)
+    PEXPECT_ERRORMESSAGE = "{}, try: {} -m pip install pexpect".format(PEXPECT_ERRORMESSAGE_BASE, sys.executable)
+    CREDSSP_ERRORMESSAGE = "{}, try: {} -m pip install pywinrm[credssp]".format(CREDSSP_ERRORMESSAGE_BASE, sys.executable)
+    NTLM_ERRORMESSAGE = "{}, try: {} -m pip install requests-ntlm".format(NTLM_ERRORMESSAGE_BASE, sys.executable)
+
+
+if enabledHttpDebug:
+    httpclient_logging_patch(logging.DEBUG)
+
+PACKAGE_ERROR = False
+
 if not URLLIB_INSTALLED:
-    log.error("request and urllib3 not installed, try: pip install requests &&  pip install urllib3")
-    sys.exit(1)
+    log.error(URLLIB_ERRORMESSAGE)
+    PACKAGE_ERROR = True
 
 if not WINRM_INSTALLED:
-    log.error("winrm not installed, try: pip install pywinrm")
-    sys.exit(1)
+    log.error(WINRM_ERRORMESSAGE)
+    PACKAGE_ERROR = True
 
 if authentication == "kerberos" and not KRB_INSTALLED:
-    log.error("Kerberos not installed, try: pip install pywinrm[kerberos]")
-    sys.exit(1)
+    log.error(KRB_ERRORMESSAGE)
+    PACKAGE_ERROR = True
 
 if authentication == "kerberos" and not HAS_PEXPECT:
-    log.error("pexpect not installed, try: pip install pexpect")
-    sys.exit(1)
+    log.error(PEXPECT_ERRORMESSAGE)
+    PACKAGE_ERROR = True
 
 if authentication == "credssp" and not HAS_CREDSSP:
-    log.error("CredSSP not installed, try: pip install pywinrm[credssp]")
-    sys.exit(1)
+    log.error(CREDSSP_ERRORMESSAGE)
+    PACKAGE_ERROR = True
 
 if authentication == "ntlm" and not HAS_NTLM:
-    log.error("NTLM not installed, try: pip install requests_ntlm")
+    log.error(NTLM_ERRORMESSAGE)
+    PACKAGE_ERROR = True
+
+if PACKAGE_ERROR:
     sys.exit(1)
 
 if authentication == "kerberos":
