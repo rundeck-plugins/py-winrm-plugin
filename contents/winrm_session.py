@@ -70,9 +70,14 @@ def run_cmd(self, command, args=(), out_stream=None, err_stream=None, retry=1, r
 
     shell_id = None
 
+    DEFAULT_CODEPAGE = 65001
+    codepage = DEFAULT_CODEPAGE
+    if "RD_NODE_CODEPAGE" in os.environ:
+        codepage = os.getenv("RD_NODE_CODEPAGE")
+
     while retryCount < retry:
         try:
-            shell_id = self.protocol.open_shell(codepage=65001, env_vars=envs)
+            shell_id = self.protocol.open_shell(codepage=codepage, env_vars=envs)
             break
         except ConnectionError as e:
             if retryCount < retry:
