@@ -24,6 +24,8 @@ scmVersion {
     }
 }
 
+group = 'com.github.rundeck-plugins'
+
 ext.pluginName = 'py-winrm-plugin'
 ext.pluginDescription = "Python Winrm Node Executor/File Copier Plugin. Connect to remote windows nodes using WINRM"
 ext.sopsCopyright = "© 2022, Pagerduty, Inc."
@@ -33,7 +35,10 @@ ext.archivesBaseName = "py-winrm-plugin"
 ext.pluginBaseFolder = "."
 
 project.version = scmVersion.version
+// Override version for Grails 7 upgrade
+project.version = '2.1.4-grails7-upgrade-test'
 
 ext.archiveFilename = ext.archivesBaseName + '-' + version 
 
 apply from: 'https://raw.githubusercontent.com/rundeck-plugins/build-zip/gradle-5.6/build.gradle'
+
