@@ -10,7 +10,7 @@ plugins {
 scmVersion {
     ignoreUncommittedChanges = true
     tag {
-        prefix = ''
+        prefix = 'v'
         versionSeparator = ''
         def origDeserialize=deserialize
         //apend .0 to satisfy semver if the tag version is only X.Y
