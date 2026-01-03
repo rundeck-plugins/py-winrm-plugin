@@ -15,7 +15,7 @@ ext.archivesBaseName = "py-winrm-plugin"
 ext.pluginBaseFolder = "."
 
 // Override version for Grails 7 upgrade
-project.version = '2.1.4-grails7-upgrade-test'
+project.version = '2.1.5-grails7-upgrade-test'
 
 ext.archiveFilename = ext.archivesBaseName + '-' + version 
 
