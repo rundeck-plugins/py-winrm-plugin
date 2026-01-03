@@ -34,7 +34,6 @@ ext.buildDateString=new Date().format("yyyy-MM-dd'T'HH:mm:ssX")
 ext.archivesBaseName = "py-winrm-plugin"
 ext.pluginBaseFolder = "."
 
-project.version = scmVersion.version
 // Override version for Grails 7 upgrade
 project.version = '2.1.4-grails7-upgrade-test'
 
