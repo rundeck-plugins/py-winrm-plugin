@@ -490,6 +490,16 @@ providers:
         renderingOptions:
           groupName: Connection
           instance-scope-node-attribute: "winrm-retry-connection-delay"
+      - name: copychunksize
+        title: Size of chunks for copying files
+        description: "Size of chunks used when copying files. Note that using a big value here might lead to Powershell errors. It can be overwriting at node level using `winrm-copy-chunk-size`"
+        type: Integer
+        default: "2048"
+        required: false
+        scope: Instance
+        renderingOptions:
+          groupName: Connection
+          instance-scope-node-attribute: "winrm-copy-chunk-size"
   - name: WinRMCheck
     title: WinRM Check Step
     description: Check the connection with a remote node using winrm-python
