@@ -285,6 +285,7 @@ winrmproxy = None
 winrmnoproxy = None
 clientcertpem = None
 clientcertprivpem = None
+copychunksize = 2048
 
 if os.environ.get('RD_CONFIG_OVERRIDE') == 'true':
     override = True
@@ -385,6 +386,9 @@ if "RD_CONFIG_RETRYCONNECTION" in os.environ:
 
 if "RD_CONFIG_RETRYCONNECTIONDELAY" in os.environ:
     retryconnectiondelay = int(os.getenv("RD_CONFIG_RETRYCONNECTIONDELAY"))
+
+if "RD_CONFIG_COPYCHUNKSIZE" in os.environ:
+    copychunksize = int(os.getenv("RD_CONFIG_COPYCHUNKSIZE"))
 
 if enabledHttpDebug:
     httpclient_logging_patch(logging.DEBUG)
@@ -523,7 +527,8 @@ try:
                           remote_filename=filename,
                           local_path=args.source,
                           quiet=quiet,
-                          override=override)
+                          override=override,
+                          step=copychunksize)
     else:
         log.warning("The source is a directory, skipping copy")
 finally:
@@ -533,4 +538,3 @@ finally:
         # cleanup temporary files
         os.remove(certpem)
         os.remove(certkeypem)
-
