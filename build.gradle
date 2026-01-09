@@ -80,8 +80,9 @@ publishing {
             artifactId = 'py-winrm-plugin'
             version = project.version
             
+            // Publish the pluginZip artifact (it's a ZIP but Maven requires .jar extension)
             artifact(pluginZip) {
-                extension = 'jar'  // Publish as .jar to Maven (it's actually a zip)
+                extension = 'jar'
             }
         }
     }
