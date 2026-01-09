@@ -119,6 +119,8 @@ parser.add_argument('--certpath', help='certpath')
 parser.add_argument('--krb5config', help='krb5config',default="/etc/krb5.conf")
 parser.add_argument('--proxy', help='proxy', default=None)
 parser.add_argument('--noproxy', help='noproxy patterns', default=None)
+parser.add_argument('--clientcertpath', help='clientcertpath')
+parser.add_argument('--clientcertprivpath', help='clientcertprivpath')
 
 
 args = parser.parse_args()
@@ -127,6 +129,8 @@ hostname = None
 username = None
 password = None
 certpath = None
+clientcertpath = None
+clientcertprivpath = None
 forceTicket = False
 
 krb5config = None
@@ -182,18 +186,28 @@ if args.proxy and args.proxy not in ("None", ""):
 if args.noproxy and args.noproxy not in ("None", ""):
     winrmnoproxy = args.noproxy
 
+if args.clientcertpath:
+    clientcertpath = args.clientcertpath
+
+if args.clientcertprivpath:
+    clientcertprivpath = args.clientcertprivpath
+
 if not hostname:
     print("hostname is required")
     sys.exit(1)
 
-if not username:
-    print("username is required")
-    sys.exit(1)
+if authentication == "certificate":
+    if not clientcertpath or not clientcertprivpath:
+        print("clientcertpath and clientcertprivpath are required")
+        sys.exit(1)
+else:
+    if not username:
+        print("username is required")
+        sys.exit(1)
 
-
-if not password:
-    print("password is required")
-    sys.exit(1)
+    if not password:
+        print("password is required")
+        sys.exit(1)
 
 if os.getenv("RD_JOB_LOGLEVEL") == "DEBUG":
     debug = True
@@ -215,7 +229,8 @@ endpoint=transport+'://'+hostname+':'+port
 log.debug("------------------------------------------")
 log.debug("endpoint:" + endpoint)
 log.debug("authentication:" + authentication)
-log.debug("username:" + username)
+log.debug("username:" + str(username))
+log.debug("clientcertpath:" + str(clientcertpath))
 log.debug("nossl:" + str(nossl))
 log.debug("transport:" + str(transport))
 log.debug("diabletls12:" + str(diabletls12))
@@ -312,6 +327,12 @@ try:
         k5bConfig = kerberosauth.KerberosAuth(krb5config=krb5config, log=log, kinit_command=kinit,username=username, password=password)
         k5bConfig.get_ticket()
         arguments["kerberos_delegation"] = krbdelegation
+    elif authentication == "certificate":
+        arguments["cert_pem"] = clientcertpath
+        arguments["cert_key_pem"] = clientcertprivpath
+        # unset username and password as they are no longer required
+        username = None
+        password = None
 
     session = winrm.Session(target=endpoint,
                              auth=(username, password),
