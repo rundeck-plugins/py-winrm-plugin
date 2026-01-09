@@ -83,10 +83,6 @@ publishing {
             artifact(pluginZip) {
                 extension = 'jar'  // Publish as .jar to Maven (it's actually a zip)
             }
-            
-            pom {
-                packaging = 'jar'
-            }
         }
     }
     
