@@ -1,4 +1,5 @@
 import re
+import os
 
 
 def check_is_file(destination):
@@ -64,3 +65,29 @@ def conditionalReplace( aMatch ) :
         result = '"' + result + '"'
 
     return result+' '
+
+
+def configure_proxy(arguments, winrmproxy, winrmnoproxy, endpoint, log):
+    from requests.utils import should_bypass_proxies
+
+    if winrmproxy:
+        if winrmnoproxy:
+            # Delegate to requests via env vars so NO_PROXY matching works
+            os.environ['HTTP_PROXY'] = winrmproxy
+            os.environ['HTTPS_PROXY'] = winrmproxy
+            os.environ['NO_PROXY'] = winrmnoproxy
+            log.debug("Proxy via env vars: HTTP(S)_PROXY=%s, NO_PROXY=%s" % (winrmproxy, winrmnoproxy))
+
+            if should_bypass_proxies(endpoint, no_proxy=winrmnoproxy):
+                log.info("Connecting to %s DIRECTLY (matched NO_PROXY: %s)" % (endpoint, winrmnoproxy))
+            else:
+                log.info("Connecting to %s via PROXY (%s)" % (endpoint, winrmproxy))
+        else:
+            # Legacy: explicit proxy for all connections
+            arguments["proxy"] = winrmproxy
+            log.info("Connecting to %s via PROXY (%s)" % (endpoint, winrmproxy))
+    else:
+        if winrmnoproxy:
+            log.warning("noproxy is set but no proxy configured; noproxy ignored")
+        log.info("Connecting to %s DIRECTLY (no proxy configured)" % endpoint)
+    return arguments

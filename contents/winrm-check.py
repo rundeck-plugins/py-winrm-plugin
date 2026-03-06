@@ -9,6 +9,7 @@ import logging
 import colored_formatter
 from colored_formatter import ColoredFormatter
 import kerberosauth
+import common
 
 
 #checking and importing dependencies
@@ -105,6 +106,8 @@ parser.add_argument('--diabletls12', help='diabletls12',default="False")
 parser.add_argument('--debug', help='debug',default="False")
 parser.add_argument('--certpath', help='certpath')
 parser.add_argument('--krb5config', help='krb5config',default="/etc/krb5.conf")
+parser.add_argument('--proxy', help='proxy', default=None)
+parser.add_argument('--noproxy', help='noproxy patterns', default=None)
 
 
 args = parser.parse_args()
@@ -160,6 +163,13 @@ if args.debug:
 
 if args.certpath:
     certpath = args.certpath
+
+winrmproxy = None
+winrmnoproxy = None
+if args.proxy and args.proxy not in ("None", ""):
+    winrmproxy = args.proxy
+if args.noproxy and args.noproxy not in ("None", ""):
+    winrmnoproxy = args.noproxy
 
 if not hostname:
     print("hostname is required")
@@ -242,6 +252,8 @@ else:
         arguments["ca_trust_path"] = certpath
 
 arguments["credssp_disable_tlsv1_2"] = diabletls12
+
+common.configure_proxy(arguments, winrmproxy, winrmnoproxy, endpoint, log)
 
 if authentication == "kerberos":
     k5bConfig = kerberosauth.KerberosAuth(krb5config=krb5config, log=log, kinit_command=kinit,username=username, password=password)
