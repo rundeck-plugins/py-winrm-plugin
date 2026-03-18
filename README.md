@@ -9,7 +9,7 @@ Download from the releases page and copy the py-winrm-plugin-X.X.X.zip to the li
 ## Requirements
 
 * Linux, Mac OS X or Windows
-* CPython 2.6-2.7, 3.3-3.5 or PyPy2
+* CPython 3.8+ or PyPy3
 * pywinrm
 * openssl 1.1.1 or higher
 * requests-kerberos and requests-credssp is optional
