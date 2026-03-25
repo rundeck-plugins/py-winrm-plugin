@@ -75,7 +75,10 @@ except ImportError as e:
 try:
     externally_managed_path = os.path.join(sysconfig.get_path("stdlib"), "EXTERNALLY-MANAGED")
     SYSTEM_INTERPRETER = os.path.exists(externally_managed_path)
-except:
+except Exception as e:
+    logging.getLogger(__name__).debug(
+        "Failed to determine externally-managed status: %s", e, exc_info=True
+    )
     SYSTEM_INTERPRETER = False
 
 log_level = 'INFO'
@@ -225,8 +228,11 @@ NTLM_ERRORMESSAGE_BASE = "requests-ntlm not installed"
 if SYSTEM_INTERPRETER:
     import configparser
     externally_managed_file = configparser.RawConfigParser()
-    externally_managed_file.read(externally_managed_path)
-    SYSTEM_INTERPRETER_ERRORMESSAGE=externally_managed_file.get("externally-managed", "Error")
+    try:
+        externally_managed_file.read(externally_managed_path)
+        SYSTEM_INTERPRETER_ERRORMESSAGE = externally_managed_file.get("externally-managed", "Error")
+    except configparser.Error:
+        SYSTEM_INTERPRETER_ERRORMESSAGE = "This Python interpreter is externally managed. Please refer to your system's EXTERNALLY-MANAGED file or documentation for details."
 
     ERRORMESSAGE = ", please install it using your systems package manager or consider using a virtual environment.\n{}".format(SYSTEM_INTERPRETER_ERRORMESSAGE)
     URLLIB_ERRORMESSAGE = "{}{}".format(URLLIB_ERRORMESSAGE_BASE, ERRORMESSAGE)

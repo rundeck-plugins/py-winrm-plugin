@@ -1,7 +1,7 @@
 import argparse
 try:
 	import os; os.environ['PATH']
-except:
+except Exception:
 	import os
 	os.environ.setdefault('PATH', '')
 import sys
@@ -22,7 +22,7 @@ class SuppressFilter(logging.Filter):
 try:
     from urllib3.connectionpool import log
     #log.addFilter(SuppressFilter())
-except:
+except ImportError:
     pass
 
 import http.client
@@ -99,7 +99,11 @@ except ImportError as e:
 try:
     externally_managed_path = os.path.join(sysconfig.get_path("stdlib"), "EXTERNALLY-MANAGED")
     SYSTEM_INTERPRETER = os.path.exists(externally_managed_path)
-except:
+except Exception:
+    logging.getLogger(__name__).debug(
+        "Failed to detect externally-managed Python environment; assuming non-system interpreter",
+        exc_info=True,
+    )
     SYSTEM_INTERPRETER = False
 
 if os.environ.get('RD_JOB_LOGLEVEL') == 'DEBUG':
@@ -289,8 +293,31 @@ NTLM_ERRORMESSAGE_BASE = "requests-ntlm not installed"
 if SYSTEM_INTERPRETER:
     import configparser
     externally_managed_file = configparser.RawConfigParser()
-    externally_managed_file.read(externally_managed_path)
-    SYSTEM_INTERPRETER_ERRORMESSAGE=externally_managed_file.get("externally-managed", "Error")
+    SYSTEM_INTERPRETER_ERRORMESSAGE = ""
+    try:
+        # Attempt to read the EXTERNALLY-MANAGED file and extract the error message.
+        externally_managed_file.read(externally_managed_path)
+        SYSTEM_INTERPRETER_ERRORMESSAGE = externally_managed_file.get(
+            "externally-managed",
+            "Error",
+            fallback=""
+        )
+    except (configparser.NoSectionError,
+            configparser.NoOptionError,
+            configparser.MissingSectionHeaderError,
+            configparser.ParsingError,
+            OSError):
+        # If the file is missing, malformed, or does not have the expected
+        # section/key, fall back to a generic message instead of crashing.
+        SYSTEM_INTERPRETER_ERRORMESSAGE = ""
+
+    if not SYSTEM_INTERPRETER_ERRORMESSAGE:
+        SYSTEM_INTERPRETER_ERRORMESSAGE = (
+            "Python packages are externally managed by your system. "
+            "Please refer to your operating system's package manager "
+            "documentation for instructions on installing additional "
+            "Python packages when using the system interpreter."
+        )
 
     ERRORMESSAGE = ", please install it using your systems package manager or consider using a virtual environment.\n{}".format(SYSTEM_INTERPRETER_ERRORMESSAGE)
     URLLIB_ERRORMESSAGE = "{}{}".format(URLLIB_ERRORMESSAGE_BASE, ERRORMESSAGE)

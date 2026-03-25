@@ -3,7 +3,6 @@ try:
 except:
 	import os
 	os.environ.setdefault('PATH', '')
-import winrm
 import argparse
 import sys
 import base64
@@ -83,7 +82,13 @@ except ImportError as e:
 try:
     externally_managed_path = os.path.join(sysconfig.get_path("stdlib"), "EXTERNALLY-MANAGED")
     SYSTEM_INTERPRETER = os.path.exists(externally_managed_path)
-except:
+except Exception as e:
+    logger = logging.getLogger(__name__)
+    logger.debug(
+        "Failed to detect externally-managed system interpreter using path %r: %s",
+        externally_managed_path if 'externally_managed_path' in locals() else None,
+        e,
+    )
     SYSTEM_INTERPRETER = False
 
 log_level = 'INFO'
@@ -396,7 +401,10 @@ if SYSTEM_INTERPRETER:
     import configparser
     externally_managed_file = configparser.RawConfigParser()
     externally_managed_file.read(externally_managed_path)
-    SYSTEM_INTERPRETER_ERRORMESSAGE=externally_managed_file.get("externally-managed", "Error")
+    try:
+        SYSTEM_INTERPRETER_ERRORMESSAGE = externally_managed_file.get("externally-managed", "Error")
+    except (configparser.NoSectionError, configparser.NoOptionError):
+        SYSTEM_INTERPRETER_ERRORMESSAGE = "Python on this system is externally managed by your operating system or distribution. Please use your system package manager to install additional Python packages, or consider using a virtual environment."
 
     ERRORMESSAGE = ", please install it using your systems package manager or consider using a virtual environment.\n{}".format(SYSTEM_INTERPRETER_ERRORMESSAGE)
     URLLIB_ERRORMESSAGE = "{}{}".format(URLLIB_ERRORMESSAGE_BASE, ERRORMESSAGE)
@@ -412,10 +420,6 @@ else:
     PEXPECT_ERRORMESSAGE = "{}, try: {} -m pip install pexpect".format(PEXPECT_ERRORMESSAGE_BASE, sys.executable)
     CREDSSP_ERRORMESSAGE = "{}, try: {} -m pip install pywinrm[credssp]".format(CREDSSP_ERRORMESSAGE_BASE, sys.executable)
     NTLM_ERRORMESSAGE = "{}, try: {} -m pip install requests-ntlm".format(NTLM_ERRORMESSAGE_BASE, sys.executable)
-
-
-if enabledHttpDebug:
-    httpclient_logging_patch(logging.DEBUG)
 
 PACKAGE_ERROR = False
 
