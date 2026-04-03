@@ -24,10 +24,10 @@ providers:
     config:
       - name: interpreter
         title: Python Interpreter
-        description: "Python Interpreter (Default: python)"
+        description: "Python Interpreter (Default: python3)"
         type: Select
         values: "python,python3"
-        default: "python"
+        default: "python3"
         required: true
         scope: Instance
       - name: authtype
@@ -233,10 +233,10 @@ providers:
     config:
       - name: interpreter
         title: Python Interpreter
-        description: "Python Interpreter (Default: python)"
+        description: "Python Interpreter (Default: python3)"
         type: Select
         values: "python,python3"
-        default: "python"
+        default: "python3"
         required: true
         scope: Instance
       - name: authtype
@@ -421,10 +421,10 @@ providers:
     config:
       - name: interpreter
         title: Python Interpreter
-        description: "Python Interpreter (Default: python)"
+        description: "Python Interpreter (Default: python3)"
         type: Select
         values: "python,python3"
-        default: "python"
+        default: "python3"
         required: true
         scope: Instance
       - name: hostname
