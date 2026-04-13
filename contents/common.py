@@ -67,8 +67,35 @@ def conditionalReplace( aMatch ) :
     return result+' '
 
 
+def _redact_proxy_url(url):
+    """Redact userinfo from proxy URL for safe logging."""
+    if not url:
+        return url
+    try:
+        try:
+            from urllib.parse import urlparse, urlunparse
+        except ImportError:
+            from urlparse import urlparse, urlunparse
+        parsed = urlparse(url)
+        if parsed.username or parsed.password:
+            netloc = parsed.hostname or ''
+            if parsed.port:
+                netloc += ':%s' % parsed.port
+            return urlunparse(parsed._replace(netloc=netloc))
+    except Exception:
+        return '[REDACTED]'
+    return url
+
+
 def configure_proxy(arguments, winrmproxy, winrmnoproxy, endpoint, log):
-    from requests.utils import should_bypass_proxies
+    try:
+        from requests.utils import should_bypass_proxies
+    except (ImportError, AttributeError):
+        log.warning("requests.utils.should_bypass_proxies not available; NO_PROXY requires requests >= 2.14.0")
+        if winrmproxy:
+            arguments["proxy"] = winrmproxy
+            log.info("Connecting to %s via PROXY (%s)" % (endpoint, _redact_proxy_url(winrmproxy)))
+        return arguments
 
     if winrmproxy:
         if winrmnoproxy:
@@ -76,16 +103,16 @@ def configure_proxy(arguments, winrmproxy, winrmnoproxy, endpoint, log):
             os.environ['HTTP_PROXY'] = winrmproxy
             os.environ['HTTPS_PROXY'] = winrmproxy
             os.environ['NO_PROXY'] = winrmnoproxy
-            log.debug("Proxy via env vars: HTTP(S)_PROXY=%s, NO_PROXY=%s" % (winrmproxy, winrmnoproxy))
+            log.debug("Proxy via env vars: HTTP(S)_PROXY set, NO_PROXY=%s" % winrmnoproxy)
 
             if should_bypass_proxies(endpoint, no_proxy=winrmnoproxy):
                 log.info("Connecting to %s DIRECTLY (matched NO_PROXY: %s)" % (endpoint, winrmnoproxy))
             else:
-                log.info("Connecting to %s via PROXY (%s)" % (endpoint, winrmproxy))
+                log.info("Connecting to %s via PROXY (%s)" % (endpoint, _redact_proxy_url(winrmproxy)))
         else:
             # Legacy: explicit proxy for all connections
             arguments["proxy"] = winrmproxy
-            log.info("Connecting to %s via PROXY (%s)" % (endpoint, winrmproxy))
+            log.info("Connecting to %s via PROXY (%s)" % (endpoint, _redact_proxy_url(winrmproxy)))
     else:
         if winrmnoproxy:
             log.warning("noproxy is set but no proxy configured; noproxy ignored")
