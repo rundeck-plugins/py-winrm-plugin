@@ -139,6 +139,7 @@ retryconnection = 1
 retryconnectiondelay = 0
 username = None
 winrmproxy = None
+winrmnoproxy = None
 
 if "RD_CONFIG_AUTHTYPE" in os.environ:
     authentication = os.getenv("RD_CONFIG_AUTHTYPE")
@@ -188,6 +189,10 @@ if "RD_CONFIG_CLEANESCAPING" in os.environ:
 if "RD_CONFIG_WINRMPROXY" in os.environ:
     winrmproxy = os.getenv("RD_CONFIG_WINRMPROXY")
     log.debug("winrmproxy: " + str(winrmproxy))
+
+if "RD_CONFIG_WINRMNOPROXY" in os.environ:
+    winrmnoproxy = os.getenv("RD_CONFIG_WINRMNOPROXY")
+    log.debug("winrmnoproxy: " + str(winrmnoproxy))
 
 if "RD_CONFIG_ENABLEDHTTPDEBUG" in os.environ:
     if os.getenv("RD_CONFIG_ENABLEDHTTPDEBUG") == "true":
@@ -311,8 +316,7 @@ else:
 if(readtimeout):
     arguments["read_timeout_sec"] = readtimeout
 
-if(winrmproxy):
-    arguments["proxy"] = winrmproxy
+common.configure_proxy(arguments, winrmproxy, winrmnoproxy, endpoint, log)
 
 if(operationtimeout):
     arguments["operation_timeout_sec"] = operationtimeout
