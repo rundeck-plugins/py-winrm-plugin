@@ -21,5 +21,11 @@ gradle-app.setting
 
 # End of https://www.gitignore.io/api/java,gradle
 
+### Python ###
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+
 # Local build logs
 .temp
