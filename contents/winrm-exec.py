@@ -382,7 +382,16 @@ lasterrorpos = 0
 
 
 def _emit(raw_text):
-    """Filter out the PID marker, record the PID, and write the rest."""
+    """Write streamed output.
+
+    When Terminate On Abort is disabled the output is written through unchanged
+    (legacy behaviour). When enabled, it is routed through the marker filter to
+    capture the remote PID and hide the marker line; the filter buffers partial
+    lines until a newline, which is only acceptable because the feature is opt-in.
+    """
+    if not terminateonabort:
+        realstdout.write(raw_text)
+        return
     cleaned = marker_filter.feed(raw_text)
     if marker_filter.pid and not tsk.remote_pid:
         tsk.remote_pid = marker_filter.pid
@@ -436,10 +445,11 @@ while True:
         break
 
 # Emit any output still buffered in the marker filter (e.g. a final line with no
-# trailing newline).
-tail = marker_filter.flush()
-if tail:
-    realstdout.write(tail)
+# trailing newline). Only relevant when the filter was actually used.
+if terminateonabort:
+    tail = marker_filter.flush()
+    if tail:
+        realstdout.write(tail)
 
 sys.stdout.seek(0)
 sys.stderr.seek(0)
