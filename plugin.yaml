@@ -148,6 +148,16 @@ providers:
         required: true
         renderingOptions:
           groupName: Connection
+      - name: terminateonabort
+        title: Terminate On Abort
+        description: "When enabled, aborting a job will terminate the remote command. (Experimental)"
+        type: Boolean
+        default: "false"
+        required: false
+        scope: Instance
+        renderingOptions:
+          groupName: Connection
+          instance-scope-node-attribute: "winrm-terminate-on-abort"
       - name: username
         title: Username
         type: String

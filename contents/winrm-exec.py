@@ -6,7 +6,9 @@ except:
 	os.environ.setdefault('PATH', '')
 import sys
 import winrm_session
+import winrm_kill
 import threading
+import signal
 import logging
 import colored_formatter
 import kerberosauth
@@ -140,6 +142,7 @@ retryconnectiondelay = 0
 username = None
 winrmproxy = None
 winrmnoproxy = None
+terminateonabort = False
 
 if "RD_CONFIG_AUTHTYPE" in os.environ:
     authentication = os.getenv("RD_CONFIG_AUTHTYPE")
@@ -206,12 +209,22 @@ if "RD_CONFIG_RETRYCONNECTION" in os.environ:
 if "RD_CONFIG_RETRYCONNECTIONDELAY" in os.environ:
     retryconnectiondelay = int(os.getenv("RD_CONFIG_RETRYCONNECTIONDELAY"))
 
+if "RD_CONFIG_TERMINATEONABORT" in os.environ:
+    terminateonabort = os.getenv("RD_CONFIG_TERMINATEONABORT") == "true"
+
 exec_command = os.getenv("RD_EXEC_COMMAND")
 log.debug("Command will be executed: " + exec_command)
 
 if cleanescapingflg:
      exec_command = common.removeSimpleQuotes(exec_command)
      log.debug("Command escaped will be executed: " + exec_command)
+
+# When abort handling is enabled, prepend a small preamble that makes the remote
+# shell report the root PID of its process tree. This lets us kill the whole tree
+# (including spawned child processes) when the job is aborted (RUN-3009).
+if terminateonabort:
+    exec_command = winrm_kill.wrap_command(exec_command, shell)
+    log.debug("Command wrapped for abort handling")
 
 endpoint=transport+'://'+args.hostname+':'+port
 
@@ -339,29 +352,88 @@ winrm.Session._strip_namespace = winrm_session._strip_namespace
 
 tsk = winrm_session.RunCommand(session, shell, exec_command, retryconnection, retryconnectiondelay, output_charset)
 t = threading.Thread(target=tsk.get_response)
+# Daemonize so the interpreter can exit on abort even while the worker thread is
+# still blocked polling output over WinRM.
+t.daemon = True
 t.start()
 realstdout = sys.stdout
 realstderr = sys.stderr
 sys.stdout = tsk.o_stream
 sys.stderr = tsk.e_stream
 
+# Flag set by the signal handler when Rundeck aborts the job. We only set a flag
+# here and do the actual remote termination from the main loop, to avoid running
+# network I/O inside the signal handler.
+abort_requested = {"flag": False}
+
+
+def _on_abort_signal(signum, frame):
+    abort_requested["flag"] = True
+
+
+if terminateonabort:
+    signal.signal(signal.SIGTERM, _on_abort_signal)
+    signal.signal(signal.SIGINT, _on_abort_signal)
+
+# Captures the remote PID from the streamed output and hides the marker line.
+marker_filter = winrm_kill.MarkerFilter()
 lastpos = 0
 lasterrorpos = 0
 
+
+def _emit(raw_text):
+    """Write streamed output.
+
+    When Terminate On Abort is disabled the output is written through unchanged
+    (legacy behaviour). When enabled, it is routed through the marker filter to
+    capture the remote PID and hide the marker line; the filter buffers partial
+    lines until a newline, which is only acceptable because the feature is opt-in.
+    """
+    if not terminateonabort:
+        realstdout.write(raw_text)
+        return
+    cleaned = marker_filter.feed(raw_text)
+    if marker_filter.pid and not tsk.remote_pid:
+        tsk.remote_pid = marker_filter.pid
+    if cleaned:
+        realstdout.write(cleaned)
+
+
+def _abort_and_exit():
+    # Flush whatever we already buffered, then terminate the remote tree.
+    try:
+        sys.stdout = realstdout
+        sys.stderr = realstderr
+        tail = marker_filter.flush()
+        if tail:
+            realstdout.write(tail)
+        realstdout.flush()
+    except Exception as e:
+        log.debug("Error flushing output during abort: %s" % e)
+
+    log.warning("Job aborted, terminating remote command on the node...")
+    winrm_kill.terminate_remote(tsk, log)
+    # Force exit: the worker thread may still be blocked on a WinRM receive.
+    os._exit(143)
+
+
 while True:
     t.join(.1)
+
+    if abort_requested["flag"]:
+        _abort_and_exit()
 
     try:
         if sys.stdout.tell() != lastpos:
             sys.stdout.seek(lastpos)
             read=sys.stdout.read()
             if isinstance(read, str):
-                realstdout.write(read)
+                _emit(read)
             else:
-                realstdout.write(read.decode(output_charset))
+                _emit(read.decode(output_charset))
     except UnicodeDecodeError:
         try:
-            realstdout.write(read.decode(DEFAULT_CHARSET))
+            _emit(read.decode(DEFAULT_CHARSET))
         except Exception as e:
             log.error(e)
     except Exception as e:
@@ -371,6 +443,13 @@ while True:
 
     if not t.is_alive():
         break
+
+# Emit any output still buffered in the marker filter (e.g. a final line with no
+# trailing newline). Only relevant when the filter was actually used.
+if terminateonabort:
+    tail = marker_filter.flush()
+    if tail:
+        realstdout.write(tail)
 
 sys.stdout.seek(0)
 sys.stderr.seek(0)

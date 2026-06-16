@@ -33,19 +33,19 @@ def removeSimpleQuotes(command):
 
 def isAPathThatRequiresDoubleQuotes(candidate):
     #first check that this is not multiple paths, e.g. 'C:\windows C:\tmp...'
-    regexpMultipleAbsolutePath = re.compile('\'[a-zA-Z]:\\\\.*\s[a-zA-Z]:\\\\.*') #at least two absolute paths
+    regexpMultipleAbsolutePath = re.compile(r"'[a-zA-Z]:\\.*\s[a-zA-Z]:\\.*") #at least two absolute paths
     if regexpMultipleAbsolutePath.match(candidate): return False
 
     #verify if this is a path with no options after, windows style. e.g. 'C:\Windows /w...'
-    regexpPathAndOption = re.compile('\'[a-zA-Z]:\\\\.*\s/.+')
+    regexpPathAndOption = re.compile(r"'[a-zA-Z]:\\.*\s/.+")
     if regexpPathAndOption.match(candidate): return False
 
     #verify if this is a path with no options after, unix style. e.g. 'C:\Windows -v'
-    regexpPathAndOptionUnix = re.compile('\'[a-zA-Z]:\\\\.*\s-.+')
+    regexpPathAndOptionUnix = re.compile(r"'[a-zA-Z]:\\.*\s-.+")
     if regexpPathAndOptionUnix.match(candidate): return False
 
     #finally, check if this is a single path, with single quotes, and requires to be put between double quotes.e.g. 'C:\Program Files'
-    regexPathRequireQuotes = re.compile('\'[a-zA-Z]:\\\\.*\s')
+    regexPathRequireQuotes = re.compile(r"'[a-zA-Z]:\\.*\s")
     if regexPathRequireQuotes.match(candidate):
         return True
     else:

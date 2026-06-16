@@ -57,7 +57,7 @@ log = logging.getLogger()
 
 # TODO: this PR https://github.com/diyan/pywinrm/pull/55 will add this fix.
 # when this PR is merged, this won't be needed anymore
-def run_cmd(self, command, args=(), out_stream=None, err_stream=None, retry=1, retry_delay=0, output_charset='utf-8'):
+def run_cmd(self, command, args=(), out_stream=None, err_stream=None, retry=1, retry_delay=0, output_charset='utf-8', tracker=None):
     self.protocol.get_command_output = protocol.get_command_output
     winrm.Session._clean_error_msg = self._clean_error_msg
 
@@ -87,7 +87,17 @@ def run_cmd(self, command, args=(), out_stream=None, err_stream=None, retry=1, r
     if shell_id is None:
         raise Exception("Connection failed after {0} retries".format(retry))
 
+    # Expose the live shell/command handles so an abort handler can terminate
+    # the remote process tree (see winrm_kill.terminate_remote).
+    if tracker is not None:
+        tracker.protocol = self.protocol
+        tracker.shell_id = shell_id
+
     command_id = self.protocol.run_command(shell_id, command, args)
+
+    if tracker is not None:
+        tracker.command_id = command_id
+
     rs = Response(self.protocol.get_command_output(self.protocol, shell_id, command_id, out_stream, err_stream))
 
     error = self._clean_error_msg(rs.std_err, output_charset)
@@ -95,10 +105,17 @@ def run_cmd(self, command, args=(), out_stream=None, err_stream=None, retry=1, r
 
     self.protocol.cleanup_command(shell_id, command_id)
     self.protocol.close_shell(shell_id)
+
+    # The shell has been torn down; clear the handles so a late abort does not
+    # try to terminate an already-closed shell.
+    if tracker is not None:
+        tracker.shell_id = None
+        tracker.command_id = None
+
     return rs
 
 
-def run_ps(self, script, out_stream=None, err_stream=None, retry=1, retry_delay=0, output_charset='utf-8'):
+def run_ps(self, script, out_stream=None, err_stream=None, retry=1, retry_delay=0, output_charset='utf-8', tracker=None):
     """base64 encodes a Powershell script and executes the powershell
     encoded script command
     """
@@ -109,7 +126,8 @@ def run_ps(self, script, out_stream=None, err_stream=None, retry=1, retry_delay=
                       err_stream=err_stream,
                       output_charset=output_charset,
                       retry=retry,
-                      retry_delay=retry_delay)
+                      retry_delay=retry_delay,
+                      tracker=tracker)
 
     return rs
 
@@ -180,19 +198,28 @@ class RunCommand:
         self.output_charset = output_charset
         self.retry = retry
         self.retry_delay = retry_delay
+        # Live WinRM handles for the running command, populated by run_cmd so an
+        # abort handler can terminate the remote process tree (RUN-3009).
+        self.protocol = None
+        self.shell_id = None
+        self.command_id = None
+        # Root PID of the remote process tree, captured from the streamed output.
+        self.remote_pid = None
 
     def get_response(self):
         try:
             if self.shell == "cmd":
                 response = self.session.run_cmd(self.exec_command, out_stream=self.o_stream, err_stream=self.e_stream,
-                                                output_charset=self.output_charset, retry=self.retry, retry_delay=self.retry_delay)
+                                                output_charset=self.output_charset, retry=self.retry, retry_delay=self.retry_delay,
+                                                tracker=self)
                 self.o_std = response.std_out
                 self.e_std = response.std_err
                 self.stat = response.status_code
 
             if self.shell == "powershell":
                 response = self.session.run_ps(self.exec_command, out_stream=self.o_stream, err_stream=self.e_stream,
-                                               output_charset=self.output_charset, retry=self.retry, retry_delay=self.retry_delay)
+                                               output_charset=self.output_charset, retry=self.retry, retry_delay=self.retry_delay,
+                                               tracker=self)
                 self.o_std = response.std_out
                 self.e_std = response.std_err
                 self.stat = response.status_code
