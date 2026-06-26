@@ -255,21 +255,26 @@ arguments["credssp_disable_tlsv1_2"] = diabletls12
 
 common.configure_proxy(arguments, winrmproxy, winrmnoproxy, endpoint, log)
 
-if authentication == "kerberos":
-    k5bConfig = kerberosauth.KerberosAuth(krb5config=krb5config, log=log, kinit_command=kinit,username=username, password=password)
-    k5bConfig.get_ticket()
-    arguments["kerberos_delegation"] = krbdelegation
+k5bConfig = None
+try:
+    if authentication == "kerberos":
+        k5bConfig = kerberosauth.KerberosAuth(krb5config=krb5config, log=log, kinit_command=kinit,username=username, password=password)
+        k5bConfig.get_ticket()
+        arguments["kerberos_delegation"] = krbdelegation
 
-session = winrm.Session(target=endpoint,
-                         auth=(username, password),
-                         **arguments)
+    session = winrm.Session(target=endpoint,
+                             auth=(username, password),
+                             **arguments)
 
-exec_command = "ipconfig"
-result = session.run_cmd(exec_command)
-print(result.std_out)
+    exec_command = "ipconfig"
+    result = session.run_cmd(exec_command)
+    print(result.std_out)
 
-if(result.std_err):
-    print("Connection with host %s fail" % hostname)
-    sys.exit(1)
-else:
-    print("Connection with host %s successfull" % hostname)
+    if(result.std_err):
+        print("Connection with host %s failed" % hostname)
+        sys.exit(1)
+    else:
+        print("Connection with host %s successful" % hostname)
+finally:
+    if k5bConfig:
+        k5bConfig.cleanup()
