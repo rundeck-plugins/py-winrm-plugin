@@ -1,4 +1,4 @@
-FROM ubuntu:16.04
+FROM ubuntu:26.04
 
 ## General package configuration
 RUN apt-get -y update && \
