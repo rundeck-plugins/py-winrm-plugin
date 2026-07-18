@@ -1,9 +1,10 @@
 /**
- * Zip-based Rundeck plugin publication for Maven Central (artifact uploaded as type jar).
+ * Zip-based Rundeck plugin publication (artifact uploaded as type jar).
  * Requires: ext.publishName, ext.githubSlug, ext.developers; task pluginZip
  */
 apply plugin: 'maven-publish'
-apply plugin: 'signing'
+
+def pkgcldRepoUrl = System.getenv("PKGCLD_REPO_URL")?.trim()
 
 publishing {
     publications {
@@ -49,32 +50,20 @@ publishing {
         }
     }
     repositories {
-        def pkgcldWriteToken = System.getenv("PKGCLD_WRITE_TOKEN") ?: project.findProperty("pkgcldWriteToken")
-        if (pkgcldWriteToken) {
+        // Only register the PackageCloud repo when its URL is configured, so plain
+        // builds/tests (which don't set PKGCLD_REPO_URL) don't fail at configuration time.
+        if (pkgcldRepoUrl) {
             maven {
-                name = "PackageCloudTest"
-                url = uri("https://packagecloud.io/pagerduty/rundeckpro-test/maven2")
+                name = "PackageCloud"
+                url = uri(pkgcldRepoUrl)
                 authentication {
                     header(HttpHeaderAuthentication)
                 }
                 credentials(HttpHeaderCredentials) {
                     name = "Authorization"
-                    value = "Bearer " + pkgcldWriteToken
+                    value = "Bearer " + (System.getenv("PKGCLD_WRITE_TOKEN") ?: project.findProperty("pkgcldWriteToken"))
                 }
             }
         }
-    }
-}
-
-def base64Decode = { String prop ->
-    project.findProperty(prop) ?
-            new String(Base64.getDecoder().decode(project.findProperty(prop).toString())).trim() :
-            null
-}
-
-if (project.hasProperty('signingKey') && project.hasProperty('signingPassword')) {
-    signing {
-        useInMemoryPgpKeys(base64Decode("signingKey"), project.signingPassword)
-        sign(publishing.publications)
     }
 }
