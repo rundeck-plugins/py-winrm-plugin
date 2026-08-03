@@ -1,4 +1,4 @@
-name: py-winrm-plugin
+name: "@name@"
 rundeckPluginVersion: 2.0
 author: "@author@"
 date: "@date@"
@@ -24,9 +24,9 @@ providers:
     config:
       - name: interpreter
         title: Python Interpreter
-        description: "Python Interpreter (Default: python). It can be overwritten at node level using `winrm-interpreter`"
+        description: "Python Interpreter (Default: python3). It can be overwritten at node level using `winrm-interpreter`"
         type: String
-        default: "python"
+        default: "python3"
         required: true
         scope: Instance
         renderingOptions:
@@ -103,6 +103,24 @@ providers:
         renderingOptions:
           groupName: Connection
           instance-scope-node-attribute: "winrm-readtimeout"
+      - name: winrmproxy
+        title: Proxy
+        description: "Specify a proxy address for communicating with Windows nodes. Example HTTP proxy strings are http://server:port and http://user:pass@server:port. An example SOCKS5 proxy string is socks5://user:pass@server:port."
+        type: String
+        required: false
+        scope: Instance
+        renderingOptions:
+          groupName: Connection
+          instance-scope-node-attribute: "winrm-proxy"
+      - name: winrmnoproxy
+        title: No Proxy List
+        description: "Comma-separated list of hosts/IPs/CIDRs that bypass the proxy. Supports exact IPs, CIDR notation (192.168.1.0/24), domain suffixes (.internal.corp), and wildcard (*). Requires Proxy to also be set. It can be overwriting at node level using `winrm-noproxy`"
+        type: String
+        required: false
+        scope: Instance
+        renderingOptions:
+          groupName: Connection
+          instance-scope-node-attribute: "winrm-noproxy"
       - name: operationtimeout
         title: operation timeout
         description: "maximum allowed time in seconds for any single wsman HTTP operation (default 20). Note that operation timeouts while receiving output (the only wsman operation that should take any significant time, and where these timeouts are expected) will be silently retried indefinitely. It can be overwriting at node level using `winrm-operationtimeout`"
@@ -132,6 +150,16 @@ providers:
         required: true
         renderingOptions:
           groupName: Connection
+      - name: terminateonabort
+        title: Terminate On Abort
+        description: "When enabled, aborting a job will terminate the remote command. (Experimental)"
+        type: Boolean
+        default: "false"
+        required: false
+        scope: Instance
+        renderingOptions:
+          groupName: Connection
+          instance-scope-node-attribute: "winrm-terminate-on-abort"
       - name: username
         title: Username
         type: String
@@ -185,6 +213,36 @@ providers:
         renderingOptions:
           groupName: Misc
           instance-scope-node-attribute: "clean-escaping"
+      - name: enabledhttpdebug
+        title: Enable HTTP logging in debug mode
+        description: "Print extra http logging in debug mode"
+        type: Boolean
+        default: "false"
+        required: true
+        scope: Instance
+        renderingOptions:
+          groupName: Connection
+          instance-scope-node-attribute: "winrm-enable-http-logging"
+      - name: retryconnection
+        title: Retry connection
+        description: "Retry the connection to the node if the connection fails. It can be overwriting at node level using `winrm-retry-connection`"
+        type: Integer
+        default: "1"
+        required: false
+        scope: Instance
+        renderingOptions:
+          groupName: Connection
+          instance-scope-node-attribute: "winrm-retry-connection"
+      - name: retryconnectiondelay
+        title: Retry connection delay
+        description: "Delay between each retry atten (seconds). It can be overwriting at node level using `winrm-retry-connection-delay`"
+        type: Integer
+        default: "10"
+        required: false
+        scope: Instance
+        renderingOptions:
+          groupName: Connection
+          instance-scope-node-attribute: "winrm-retry-connection-delay"
   - name: WinRMcpPython
     title: WinRM Python File Copier
     description: Copying files to remote Windows computer
@@ -196,9 +254,9 @@ providers:
     config:
       - name: interpreter
         title: Python Interpreter
-        description: "Python Interpreter (Default: python). It can be overwritten at node level using `winrm-interpreter`"
+        description: "Python Interpreter (Default: python3). It can be overwritten at node level using `winrm-interpreter`"
         type: String
-        default: "python"
+        default: "python3"
         required: true
         scope: Instance
         renderingOptions:
@@ -266,6 +324,24 @@ providers:
         renderingOptions:
           groupName: Connection
           instance-scope-node-attribute: "winrm-certpath"
+      - name: readtimeout
+        title: connect/read times out
+        description: "maximum seconds to wait before an HTTP connect/read times out (default 30). This value should be slightly higher than operation timeout, as the server can block *at least* that long. It can be overwriting at node level using `winrm-readtimeout`"
+        type: String
+        required: false
+        scope: Instance
+        renderingOptions:
+          groupName: Connection
+          instance-scope-node-attribute: "winrm-readtimeout"
+      - name: operationtimeout
+        title: operation timeout
+        description: "maximum allowed time in seconds for any single wsman HTTP operation (default 20). Note that operation timeouts while receiving output (the only wsman operation that should take any significant time, and where these timeouts are expected) will be silently retried indefinitely. It can be overwriting at node level using `winrm-operationtimeout`"
+        type: String
+        required: false
+        scope: Instance
+        renderingOptions:
+          groupName: Connection
+          instance-scope-node-attribute: "winrm-operationtimeout"
       - name: username
         title: Username
         type: String
@@ -290,6 +366,10 @@ providers:
         name: debug
         title: Debug?
         description: 'Write debug messages'
+      - type: Boolean
+        name: override
+        title: Override?
+        description: 'Overrides the file on the remote server if it already exists'
       - name: krb5config
         title: krb5 Config File
         description: "Path of krb5.conf file"
@@ -314,6 +394,54 @@ providers:
         required: false
         renderingOptions:
           groupName: Kerberos
+      - name: winrmproxy
+        title: Proxy
+        description: "Specify a proxy address for communicating with Windows nodes. Example HTTP proxy strings are http://server:port and http://user:pass@server:port. An example SOCKS5 proxy string is socks5://user:pass@server:port."
+        type: String
+        required: false
+        scope: Instance
+        renderingOptions:
+          groupName: Connection
+          instance-scope-node-attribute: "winrm-proxy"
+      - name: winrmnoproxy
+        title: No Proxy List
+        description: "Comma-separated list of hosts/IPs/CIDRs that bypass the proxy. Supports exact IPs, CIDR notation (192.168.1.0/24), domain suffixes (.internal.corp), and wildcard (*). Requires Proxy to also be set. It can be overwriting at node level using `winrm-noproxy`"
+        type: String
+        required: false
+        scope: Instance
+        renderingOptions:
+          groupName: Connection
+          instance-scope-node-attribute: "winrm-noproxy"
+      - name: enabledhttpdebug
+        title: Enable HTTP logging in debug mode
+        description: "Print extra http logging in debug mode"
+        type: Boolean
+        default: "false"
+        required: true
+        scope: Instance
+        renderingOptions:
+          groupName: Connection
+          instance-scope-node-attribute: "winrm-enable-http-logging"
+      - name: retryconnection
+        title: Retry connection
+        description: "Retry the connection to the node if the connection fails. It can be overwriting at node level using `winrm-retry-connection`"
+        type: Integer
+        default: "1"
+        required: false
+        scope: Instance
+        renderingOptions:
+          groupName: Connection
+          instance-scope-node-attribute: "winrm-retry-connection"
+      - name: retryconnectiondelay
+        title: Retry connection delay
+        description: "Delay between each retry atten (seconds). It can be overwriting at node level using `winrm-retry-connection-delay`"
+        type: Integer
+        default: "10"
+        required: false
+        scope: Instance
+        renderingOptions:
+          groupName: Connection
+          instance-scope-node-attribute: "winrm-retry-connection-delay"
   - name: WinRMCheck
     title: WinRM Check Step
     description: Check the connection with a remote node using winrm-python
@@ -321,13 +449,13 @@ providers:
     plugin-type: script
     script-interpreter: ${config.interpreter} -u
     script-file: winrm-check.py
-    script-args: --username ${config.username} --hostname ${config.hostname} --password ${config.password_storage_path} --authentication ${config.authtype} --transport ${config.winrmtransport} --port ${config.winrmport} --nossl ${config.nossl} --debug ${config.debug} --certpath ${config.certpath}
+    script-args: --username ${config.username} --hostname ${config.hostname} --password ${config.password_storage_path} --authentication ${config.authtype} --transport ${config.winrmtransport} --port ${config.winrmport} --nossl ${config.nossl} --debug ${config.debug} --certpath ${config.certpath} --proxy ${config.winrmproxy} --noproxy ${config.winrmnoproxy}
     config:
       - name: interpreter
         title: Python Interpreter
-        description: "Python Interpreter (Default: python). It can be overwritten at node level using `winrm-interpreter`"
+        description: "Python Interpreter (Default: python3)"
         type: String
-        default: "python"
+        default: "python3"
         required: true
         scope: Instance
       - name: hostname
@@ -416,4 +544,13 @@ providers:
         required: false
         renderingOptions:
           groupName: Kerberos
-
+      - name: winrmproxy
+        title: Proxy
+        description: "Specify a proxy address for communicating with Windows nodes. Example HTTP proxy strings are http://server:port and http://user:pass@server:port. An example SOCKS5 proxy string is socks5://user:pass@server:port."
+        type: String
+        required: false
+      - name: winrmnoproxy
+        title: No Proxy List
+        description: "Comma-separated list of hosts/IPs/CIDRs that bypass the proxy. Supports exact IPs, CIDR notation (192.168.1.0/24), domain suffixes (.internal.corp), and wildcard (*)."
+        type: String
+        required: false

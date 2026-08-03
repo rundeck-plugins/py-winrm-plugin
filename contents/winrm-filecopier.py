@@ -3,7 +3,6 @@ try:
 except:
 	import os
 	os.environ.setdefault('PATH', '')
-import winrm
 import argparse
 import sys
 import base64
@@ -15,6 +14,10 @@ import xml.etree.ElementTree as ET
 import colored_formatter
 from colored_formatter import ColoredFormatter
 import kerberosauth
+import http.client
+import winrm_session
+import sysconfig
+import os.path
 
 #checking and importing dependencies
 ISPY3 = sys.version_info[0] == 3
@@ -24,6 +27,7 @@ KRB_INSTALLED = False
 HAS_NTLM = False
 HAS_CREDSSP = False
 HAS_PEXPECT = False
+SYSTEM_INTERPRETER = False
 
 if ISPY3:
     from inspect import getfullargspec as getargspec
@@ -75,20 +79,25 @@ try:
 except ImportError as e:
     HAS_PEXPECT = False
 
+try:
+    externally_managed_path = os.path.join(sysconfig.get_path("stdlib"), "EXTERNALLY-MANAGED")
+    SYSTEM_INTERPRETER = os.path.exists(externally_managed_path)
+except Exception as e:
+    logger = logging.getLogger(__name__)
+    logger.debug(
+        "Failed to detect externally-managed system interpreter using path %r: %s",
+        externally_managed_path if 'externally_managed_path' in locals() else None,
+        e,
+    )
+    SYSTEM_INTERPRETER = False
+
 log_level = 'INFO'
 if os.environ.get('RD_JOB_LOGLEVEL') == 'DEBUG':
     log_level = 'DEBUG'
 else:
     log_level = 'ERROR'
 
-##end
-
-
-log_level = 'INFO'
-if os.environ.get('RD_JOB_LOGLEVEL') == 'DEBUG':
-    log_level = 'DEBUG'
-else:
-    log_level = 'ERROR'
+# end
 
 console = logging.StreamHandler()
 console.setFormatter(ColoredFormatter(colored_formatter.format()))
@@ -97,6 +106,17 @@ console.stream=sys.stdout
 log = logging.getLogger()
 log.addHandler(console)
 log.setLevel(log_level)
+
+httpclient_logger = logging.getLogger("http.client")
+
+
+def httpclient_logging_patch(level=logging.DEBUG):
+    def httpclient_log(*args):
+        httpclient_logger.log(level, " ".join(args))
+
+    http.client.print = httpclient_log
+    http.client.HTTPConnection.debuglevel = 1
+
 
 def _clean_error_msg(self, msg):
     """converts a Powershell CLIXML message to a more human readable string
@@ -165,8 +185,10 @@ class WinRmError(RemoteCommandError):
 
 class CopyFiles(object):
 
-    def __init__(self, session):
-        self.session=session
+    def __init__(self, session, retry, retry_delay):
+        self.session = session
+        self.retry = retry
+        self.retry_delay = retry_delay
 
 
     def winrm_upload(self,
@@ -174,7 +196,8 @@ class CopyFiles(object):
                     remote_filename,
                     local_path,
                     step=2048,
-                    quiet=True):
+                    quiet=True,
+                    override=False):
 
         if remote_path.endswith('/') or remote_path.endswith('\\'):
             full_path = remote_path + remote_filename
@@ -183,7 +206,12 @@ class CopyFiles(object):
 
         print("coping file %s to %s" % (local_path, full_path))
 
-        self.session.run_ps('if (!(Test-Path {0})) {{ New-Item -ItemType directory -Path {0} }}'.format(remote_path))
+        self.session.run_ps('if (!(Test-Path {0})) {{ New-Item -ItemType directory -Path {0} }}'.format(remote_path),
+                            retry=self.retry,
+                            retry_delay=self.retry_delay)
+
+        if override:
+            self.session.run_ps('if ((Test-Path {0} -PathType Leaf)) {{ rm {0} }}'.format(full_path), retry=self.retry, retry_delay=self.retry_delay)
 
         size = os.stat(local_path).st_size
         with open(local_path, 'rb') as f:
@@ -245,6 +273,19 @@ kinit = None
 krb5config = None
 krbdelegation = False
 forceTicket = False
+override=False
+enabledHttpDebug = False
+readtimeout = None
+operationtimeout = None
+retryconnection = 1
+retryconnectiondelay = 0
+certpath = None
+username = None
+winrmproxy = None
+winrmnoproxy = None
+
+if os.environ.get('RD_CONFIG_OVERRIDE') == 'true':
+    override = True
 
 if "RD_CONFIG_AUTHTYPE" in os.environ:
     authentication = os.getenv("RD_CONFIG_AUTHTYPE")
@@ -269,6 +310,12 @@ if "RD_CONFIG_DISABLETLS12" in os.environ:
 
 if "RD_CONFIG_CERTPATH" in os.environ:
     certpath = os.getenv("RD_CONFIG_CERTPATH")
+
+if "RD_CONFIG_WINRMPROXY" in os.environ:
+    winrmproxy = os.getenv("RD_CONFIG_WINRMPROXY")
+
+if "RD_CONFIG_WINRMNOPROXY" in os.environ:
+    winrmnoproxy = os.getenv("RD_CONFIG_WINRMNOPROXY")
 
 if "RD_OPTION_USERNAME" in os.environ and os.getenv("RD_OPTION_USERNAME"):
     #take user from job
@@ -305,10 +352,29 @@ if "RD_CONFIG_KRBDELEGATION" in os.environ:
     else:
         krbdelegation = False
 
-endpoint = transport+'://'+args.hostname+':'+port
+if "RD_CONFIG_READTIMEOUT" in os.environ:
+    readtimeout = os.getenv("RD_CONFIG_READTIMEOUT")
 
-arguments = {}
-arguments["transport"] = authentication
+if "RD_CONFIG_OPERATIONTIMEOUT" in os.environ:
+    operationtimeout = os.getenv("RD_CONFIG_OPERATIONTIMEOUT")
+
+if "RD_CONFIG_ENABLEDHTTPDEBUG" in os.environ:
+    if os.getenv("RD_CONFIG_ENABLEDHTTPDEBUG") == "true":
+        enabledHttpDebug = True
+    else:
+        enabledHttpDebug = False
+
+if "RD_CONFIG_RETRYCONNECTION" in os.environ:
+    retryconnection = int(os.getenv("RD_CONFIG_RETRYCONNECTION"))
+
+if "RD_CONFIG_RETRYCONNECTIONDELAY" in os.environ:
+    retryconnectiondelay = int(os.getenv("RD_CONFIG_RETRYCONNECTIONDELAY"))
+
+if enabledHttpDebug:
+    httpclient_logging_patch(logging.DEBUG)
+
+endpoint = transport+'://'+args.hostname+':'+port
+arguments = {"transport": authentication}
 
 if(nossl == True):
     arguments["server_cert_validation"] = "ignore"
@@ -319,65 +385,116 @@ else:
 
 arguments["credssp_disable_tlsv1_2"] = diabletls12
 
+common.configure_proxy(arguments, winrmproxy, winrmnoproxy, endpoint, log)
+
+if(readtimeout):
+    arguments["read_timeout_sec"] = readtimeout
+
+if(operationtimeout):
+    arguments["operation_timeout_sec"] = operationtimeout
+
+URLLIB_ERRORMESSAGE_BASE = "requests and urllib3 not installed"
+WINRM_ERRORMESSAGE_BASE = "pywinrm not installed"
+KRB_ERRORMESSAGE_BASE = "requests-kerberos not installed"
+PEXPECT_ERRORMESSAGE_BASE = "pexpect not installed"
+CREDSSP_ERRORMESSAGE_BASE = "pywinrm[credssp] not installed"
+NTLM_ERRORMESSAGE_BASE = "requests-ntlm not installed"
+
+if SYSTEM_INTERPRETER:
+    import configparser
+    externally_managed_file = configparser.RawConfigParser()
+    externally_managed_file.read(externally_managed_path)
+    try:
+        SYSTEM_INTERPRETER_ERRORMESSAGE = externally_managed_file.get("externally-managed", "Error")
+    except (configparser.NoSectionError, configparser.NoOptionError):
+        SYSTEM_INTERPRETER_ERRORMESSAGE = "Python on this system is externally managed by your operating system or distribution. Please use your system package manager to install additional Python packages, or consider using a virtual environment."
+
+    ERRORMESSAGE = ", please install it using your systems package manager or consider using a virtual environment.\n{}".format(SYSTEM_INTERPRETER_ERRORMESSAGE)
+    URLLIB_ERRORMESSAGE = "{}{}".format(URLLIB_ERRORMESSAGE_BASE, ERRORMESSAGE)
+    WINRM_ERRORMESSAGE = "{}{}".format(WINRM_ERRORMESSAGE_BASE, ERRORMESSAGE)
+    KRB_ERRORMESSAGE = "{}{}".format(KRB_ERRORMESSAGE_BASE, ERRORMESSAGE)
+    PEXPECT_ERRORMESSAGE = "{}{}".format(PEXPECT_ERRORMESSAGE_BASE, ERRORMESSAGE)
+    CREDSSP_ERRORMESSAGE = "{}{}".format(CREDSSP_ERRORMESSAGE_BASE, ERRORMESSAGE)
+    NTLM_ERRORMESSAGE = "{}{}".format(NTLM_ERRORMESSAGE_BASE, ERRORMESSAGE)
+else:
+    URLLIB_ERRORMESSAGE = "{}, try: {} -m pip install requests urllib3".format(URLLIB_ERRORMESSAGE_BASE, sys.executable)
+    WINRM_ERRORMESSAGE = "{}, try: {} -m pip install pywinrm".format(WINRM_ERRORMESSAGE_BASE, sys.executable)
+    KRB_ERRORMESSAGE = "{}, try: {} -m pip install requests-kerberos".format(KRB_ERRORMESSAGE_BASE, sys.executable)
+    PEXPECT_ERRORMESSAGE = "{}, try: {} -m pip install pexpect".format(PEXPECT_ERRORMESSAGE_BASE, sys.executable)
+    CREDSSP_ERRORMESSAGE = "{}, try: {} -m pip install pywinrm[credssp]".format(CREDSSP_ERRORMESSAGE_BASE, sys.executable)
+    NTLM_ERRORMESSAGE = "{}, try: {} -m pip install requests-ntlm".format(NTLM_ERRORMESSAGE_BASE, sys.executable)
+
+PACKAGE_ERROR = False
 
 if not URLLIB_INSTALLED:
-    log.error("request and urllib3 not installed, try: pip install requests &&  pip install urllib3")
-    sys.exit(1)
+    log.error(URLLIB_ERRORMESSAGE)
+    PACKAGE_ERROR = True
 
 if not WINRM_INSTALLED:
-    log.error("winrm not installed, try: pip install pywinrm")
-    sys.exit(1)
+    log.error(WINRM_ERRORMESSAGE)
+    PACKAGE_ERROR = True
 
 if authentication == "kerberos" and not KRB_INSTALLED:
-    log.error("Kerberos not installed, try: pip install pywinrm[kerberos]")
-    sys.exit(1)
+    log.error(KRB_ERRORMESSAGE)
+    PACKAGE_ERROR = True
 
 if authentication == "kerberos" and not HAS_PEXPECT:
-    log.error("pexpect not installed, try: pip install pexpect")
-    sys.exit(1)
+    log.error(PEXPECT_ERRORMESSAGE)
+    PACKAGE_ERROR = True
 
 if authentication == "credssp" and not HAS_CREDSSP:
-    log.error("CredSSP not installed, try: pip install pywinrm[credssp]")
-    sys.exit(1)
+    log.error(CREDSSP_ERRORMESSAGE)
+    PACKAGE_ERROR = True
 
 if authentication == "ntlm" and not HAS_NTLM:
-    log.error("NTLM not installed, try: pip install requests_ntlm")
+    log.error(NTLM_ERRORMESSAGE)
+    PACKAGE_ERROR = True
+
+if PACKAGE_ERROR:
     sys.exit(1)
 
-if authentication == "kerberos":
-    k5bConfig = kerberosauth.KerberosAuth(krb5config=krb5config, log=log, kinit_command=kinit,username=username, password=password)
-    k5bConfig.get_ticket()
-    arguments["kerberos_delegation"] = krbdelegation
+k5bConfig = None
+try:
+    if authentication == "kerberos":
+        k5bConfig = kerberosauth.KerberosAuth(krb5config=krb5config, log=log, kinit_command=kinit,username=username, password=password)
+        k5bConfig.get_ticket()
+        arguments["kerberos_delegation"] = krbdelegation
 
-session = winrm.Session(target=endpoint,
-                        auth=(username, password),
-                        **arguments)
+    session = winrm.Session(target=endpoint,
+                            auth=(username, password),
+                            **arguments)
 
+    winrm.Session.run_cmd = winrm_session.run_cmd
+    winrm.Session.run_ps = winrm_session.run_ps
+    winrm.Session._clean_error_msg = winrm_session._clean_error_msg
+    winrm.Session._strip_namespace = winrm_session._strip_namespace
 
-winrm.Session._clean_error_msg = _clean_error_msg
+    copy = CopyFiles(session, retryconnection, retryconnectiondelay)
 
-copy = CopyFiles(session)
-
-destination = args.destination
-filename = ntpath.basename(args.destination)
-if filename is None:
-    filename = os.path.basename(args.source)
-
-if filename in args.destination:
-    destination = destination.replace(filename, '')
-else:
-    isFile = common.check_is_file(args.destination)
-    if isFile:
-        filename = common.get_file(args.destination)
-        destination = destination.replace(filename, '')
-    else:
+    destination = args.destination
+    filename = ntpath.basename(args.destination)
+    if filename is None:
         filename = os.path.basename(args.source)
 
-if not os.path.isdir(args.source):
-    copy.winrm_upload(remote_path=destination,
-                      remote_filename=filename,
-                      local_path=args.source,
-                      quiet=quiet)
-else:
-    log.warn("The source is a directory, skipping copy")
+    if filename in args.destination:
+        destination = destination.replace(filename, '')
+    else:
+        isFile = common.check_is_file(args.destination)
+        if isFile:
+            filename = common.get_file(args.destination)
+            destination = destination.replace(filename, '')
+        else:
+            filename = os.path.basename(args.source)
+
+    if not os.path.isdir(args.source):
+        copy.winrm_upload(remote_path=destination,
+                          remote_filename=filename,
+                          local_path=args.source,
+                          quiet=quiet,
+                          override=override)
+    else:
+        log.warning("The source is a directory, skipping copy")
+finally:
+    if k5bConfig:
+        k5bConfig.cleanup()
 

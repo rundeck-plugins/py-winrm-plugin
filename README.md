@@ -9,8 +9,9 @@ Download from the releases page and copy the py-winrm-plugin-X.X.X.zip to the li
 ## Requirements
 
 * Linux, Mac OS X or Windows
-* CPython 2.6-2.7, 3.3-3.5 or PyPy2
+* CPython 3.8+ or PyPy3
 * pywinrm
+* openssl 1.1.1 or higher
 * requests-kerberos and requests-credssp is optional
 
 It can be installed with the following command: `pip install pywinrm` 
@@ -36,6 +37,11 @@ For further information see:
 It can be overwriting at node level using `winrm-readtimeout`
 * **operation timeout**: maximum allowed time in seconds for any single wsman HTTP operation (default 20). Note that operation timeouts while receiving output (the only wsman operation that should take any significant time, and where these timeouts are expected) will be silently retried indefinitely.
 It can be overwriting at node level using `winrm-operationtimeout`
+* **retry connection**: Retry a connection when it fails for connectivity issues (default 1).  
+  It can be overwriting at node level using `winrm-retry-connection`
+* **retry connection**: Delay between retries in seconds (default 10 seconds).
+  It can be overwriting at node level using `winrm-retry-connection-delay`
+* **Terminate On Abort**: When enabled, aborting a job terminates the remote command **and its whole process tree** on the Windows node. Disabled by default (legacy behaviour). It can be overwritten at node level using `winrm-terminate-on-abort`. See [Aborting jobs](#aborting-jobs).
 
 For Kerberos
 * **krb5 Config File**: path of the krb5.conf (default: /etc/krb5.conf)
@@ -105,6 +111,7 @@ In resume, to use Kerberos authentication the following requirements are needed:
 
 ```bash
 $ sudo apt-get install python-dev libkrb5-dev
+$ pip install wheel
 $ pip install pywinrm[kerberos]
 $ pip install requests-kerberos
 $ pip install pexpect
@@ -112,7 +119,8 @@ $ pip install pexpect
 
 #### for RHEL/CentOS/etc:
 ```bash
-$ sudo yum install python-devel krb5-devel krb5-workstation requests-kerberos
+$ sudo yum install python-devel krb5-devel krb5-workstation gcc
+$ pip install wheel
 $ pip install pywinrm[kerberos]
 $ pip install requests-kerberos
 $ pip install pexpect
@@ -168,6 +176,37 @@ catch {
     exit 1
 }
 ```
+
+## Aborting jobs
+
+When a job step runs on a Windows node over WinRM, the command (and any child
+processes it spawns) runs on the remote node, while only a thin client process
+runs on the Rundeck server/runner. Historically, aborting the job killed the
+local client but left the remote command — and especially the child processes it
+had spawned — running on the Windows node.
+
+The **Terminate On Abort** option fixes this. It is **disabled by default**;
+enable the checkbox (or set node attribute `winrm-terminate-on-abort=true`) to
+turn it on. When enabled:
+
+1. Before launching, the plugin prepends a tiny preamble that makes the remote
+   shell report the root PID of its process tree. The marker line is parsed by
+   the plugin and removed from the job output, so it is not visible in the log.
+   - For the `powershell` shell this uses the built-in `$PID` variable.
+   - For the `cmd` shell the PID of the `cmd.exe` process is resolved via a
+     short-lived child PowerShell (no dependency on the deprecated `wmic`).
+2. When the job is aborted, the plugin:
+   - sends the WS-Man `terminate` signal to the running command, and
+   - opens a fresh WinRM shell and runs `taskkill /F /T /PID <pid>` to kill the
+     entire process tree on the node.
+
+Notes:
+
+* The `powershell` shell (the default) provides the most reliable PID capture.
+* If no PID could be captured, only the WS-Man `terminate` signal is sent, and
+  some child processes may survive — the behaviour then matches older versions.
+* When the option is disabled (the default), the preamble/termination is skipped
+  entirely and the plugin behaves exactly as older versions did on abort.
 
 ## Troubleshooting
 

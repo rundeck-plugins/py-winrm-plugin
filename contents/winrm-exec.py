@@ -1,18 +1,21 @@
 import argparse
 try:
 	import os; os.environ['PATH']
-except:
+except Exception:
 	import os
 	os.environ.setdefault('PATH', '')
 import sys
 import winrm_session
+import winrm_kill
 import threading
+import signal
 import logging
 import colored_formatter
 import kerberosauth
 import common
 from colored_formatter import ColoredFormatter
-
+import sysconfig
+import os.path
 
 class SuppressFilter(logging.Filter):
     def filter(self, record):
@@ -20,9 +23,20 @@ class SuppressFilter(logging.Filter):
 
 try:
     from urllib3.connectionpool import log
-    log.addFilter(SuppressFilter())
-except:
+    #log.addFilter(SuppressFilter())
+except ImportError:
     pass
+
+import http.client
+httpclient_logger = logging.getLogger("http.client")
+
+
+def httpclient_logging_patch(level=logging.DEBUG):
+    def httpclient_log(*args):
+        httpclient_logger.log(level, " ".join(args))
+
+    http.client.print = httpclient_log
+    http.client.HTTPConnection.debuglevel = 1
 
 #checking and importing dependencies
 ISPY3 = sys.version_info[0] == 3
@@ -32,6 +46,7 @@ KRB_INSTALLED = False
 HAS_NTLM = False
 HAS_CREDSSP = False
 HAS_PEXPECT = False
+SYSTEM_INTERPRETER = False
 
 if ISPY3:
     from inspect import getfullargspec as getargspec
@@ -83,6 +98,16 @@ try:
 except ImportError as e:
     HAS_PEXPECT = False
 
+try:
+    externally_managed_path = os.path.join(sysconfig.get_path("stdlib"), "EXTERNALLY-MANAGED")
+    SYSTEM_INTERPRETER = os.path.exists(externally_managed_path)
+except Exception:
+    logging.getLogger(__name__).debug(
+        "Failed to detect externally-managed Python environment; assuming non-system interpreter",
+        exc_info=True,
+    )
+    SYSTEM_INTERPRETER = False
+
 if os.environ.get('RD_JOB_LOGLEVEL') == 'DEBUG':
     log_level = 'DEBUG'
 else:
@@ -96,6 +121,10 @@ console.stream=sys.stdout
 log = logging.getLogger()
 log.addHandler(console)
 log.setLevel(log_level)
+
+requests_log = logging.getLogger("requests.packages.urllib3")
+requests_log.setLevel(logging.DEBUG)
+requests_log.propagate = True
 
 parser = argparse.ArgumentParser(description='Run Bolt command.')
 parser.add_argument('hostname', help='the hostname')
@@ -119,6 +148,13 @@ operationtimeout = None
 forcefail = False
 exitBehaviour = "console"
 cleanescapingflg = False
+enabledHttpDebug = False
+retryconnection = 1
+retryconnectiondelay = 0
+username = None
+winrmproxy = None
+winrmnoproxy = None
+terminateonabort = False
 
 if "RD_CONFIG_AUTHTYPE" in os.environ:
     authentication = os.getenv("RD_CONFIG_AUTHTYPE")
@@ -165,12 +201,42 @@ if "RD_CONFIG_CLEANESCAPING" in os.environ:
      else:
         cleanescapingflg = False
 
+if "RD_CONFIG_WINRMPROXY" in os.environ:
+    winrmproxy = os.getenv("RD_CONFIG_WINRMPROXY")
+    log.debug("winrmproxy: " + str(winrmproxy))
+
+if "RD_CONFIG_WINRMNOPROXY" in os.environ:
+    winrmnoproxy = os.getenv("RD_CONFIG_WINRMNOPROXY")
+    log.debug("winrmnoproxy: " + str(winrmnoproxy))
+
+if "RD_CONFIG_ENABLEDHTTPDEBUG" in os.environ:
+    if os.getenv("RD_CONFIG_ENABLEDHTTPDEBUG") == "true":
+        enabledHttpDebug = True
+    else:
+        enabledHttpDebug = False
+
+if "RD_CONFIG_RETRYCONNECTION" in os.environ:
+    retryconnection = int(os.getenv("RD_CONFIG_RETRYCONNECTION"))
+
+if "RD_CONFIG_RETRYCONNECTIONDELAY" in os.environ:
+    retryconnectiondelay = int(os.getenv("RD_CONFIG_RETRYCONNECTIONDELAY"))
+
+if "RD_CONFIG_TERMINATEONABORT" in os.environ:
+    terminateonabort = os.getenv("RD_CONFIG_TERMINATEONABORT") == "true"
+
 exec_command = os.getenv("RD_EXEC_COMMAND")
 log.debug("Command will be executed: " + exec_command)
 
 if cleanescapingflg:
      exec_command = common.removeSimpleQuotes(exec_command)
      log.debug("Command escaped will be executed: " + exec_command)
+
+# When abort handling is enabled, prepend a small preamble that makes the remote
+# shell report the root PID of its process tree. This lets us kill the whole tree
+# (including spawned child processes) when the job is aborted (RUN-3009).
+if terminateonabort:
+    exec_command = winrm_kill.wrap_command(exec_command, shell)
+    log.debug("Command wrapped for abort handling")
 
 endpoint=transport+'://'+args.hostname+':'+port
 
@@ -210,44 +276,113 @@ if "RD_CONFIG_KRBDELEGATION" in os.environ:
     else:
         krbdelegation = False
 
+DEFAULT_CHARSET = 'utf-8'
+output_charset = DEFAULT_CHARSET
+if "RD_NODE_OUTPUT_CHARSET" in os.environ:
+    output_charset = os.getenv("RD_NODE_OUTPUT_CHARSET")
+
 log.debug("------------------------------------------")
 log.debug("endpoint:" + endpoint)
 log.debug("authentication:" + authentication)
 log.debug("username:" + username)
 log.debug("nossl:" + str(nossl))
 log.debug("diabletls12:" + str(diabletls12))
-log.debug("krb5config:" + krb5config)
-log.debug("kinit command:" + kinit)
+log.debug("krb5config:" + str(krb5config))
+log.debug("kinit command:" + str(kinit))
 log.debug("kerberos delegation:" + str(krbdelegation))
 log.debug("shell:" + shell)
+log.debug("output_charset:" + output_charset)
 log.debug("readtimeout:" + str(readtimeout))
 log.debug("operationtimeout:" + str(operationtimeout))
 log.debug("exit Behaviour:" + exitBehaviour)
 log.debug("cleanescapingflg: " + str(cleanescapingflg))
+log.debug("enabledHttpDebug: " + str(enabledHttpDebug))
+log.debug("retryConnection: " + str(retryconnection))
+log.debug("retryConnectionDelay: " + str(retryconnectiondelay))
 log.debug("------------------------------------------")
 
+URLLIB_ERRORMESSAGE_BASE = "requests and urllib3 not installed"
+WINRM_ERRORMESSAGE_BASE = "pywinrm not installed"
+KRB_ERRORMESSAGE_BASE = "requests-kerberos not installed"
+PEXPECT_ERRORMESSAGE_BASE = "pexpect not installed"
+CREDSSP_ERRORMESSAGE_BASE = "pywinrm[credssp] not installed"
+NTLM_ERRORMESSAGE_BASE = "requests-ntlm not installed"
+
+if SYSTEM_INTERPRETER:
+    import configparser
+    externally_managed_file = configparser.RawConfigParser()
+    SYSTEM_INTERPRETER_ERRORMESSAGE = ""
+    try:
+        # Attempt to read the EXTERNALLY-MANAGED file and extract the error message.
+        externally_managed_file.read(externally_managed_path)
+        SYSTEM_INTERPRETER_ERRORMESSAGE = externally_managed_file.get(
+            "externally-managed",
+            "Error",
+            fallback=""
+        )
+    except (configparser.NoSectionError,
+            configparser.NoOptionError,
+            configparser.MissingSectionHeaderError,
+            configparser.ParsingError,
+            OSError):
+        # If the file is missing, malformed, or does not have the expected
+        # section/key, fall back to a generic message instead of crashing.
+        SYSTEM_INTERPRETER_ERRORMESSAGE = ""
+
+    if not SYSTEM_INTERPRETER_ERRORMESSAGE:
+        SYSTEM_INTERPRETER_ERRORMESSAGE = (
+            "Python packages are externally managed by your system. "
+            "Please refer to your operating system's package manager "
+            "documentation for instructions on installing additional "
+            "Python packages when using the system interpreter."
+        )
+
+    ERRORMESSAGE = ", please install it using your systems package manager or consider using a virtual environment.\n{}".format(SYSTEM_INTERPRETER_ERRORMESSAGE)
+    URLLIB_ERRORMESSAGE = "{}{}".format(URLLIB_ERRORMESSAGE_BASE, ERRORMESSAGE)
+    WINRM_ERRORMESSAGE = "{}{}".format(WINRM_ERRORMESSAGE_BASE, ERRORMESSAGE)
+    KRB_ERRORMESSAGE = "{}{}".format(KRB_ERRORMESSAGE_BASE, ERRORMESSAGE)
+    PEXPECT_ERRORMESSAGE = "{}{}".format(PEXPECT_ERRORMESSAGE_BASE, ERRORMESSAGE)
+    CREDSSP_ERRORMESSAGE = "{}{}".format(CREDSSP_ERRORMESSAGE_BASE, ERRORMESSAGE)
+    NTLM_ERRORMESSAGE = "{}{}".format(NTLM_ERRORMESSAGE_BASE, ERRORMESSAGE)
+else:
+    URLLIB_ERRORMESSAGE = "{}, try: {} -m pip install requests urllib3".format(URLLIB_ERRORMESSAGE_BASE, sys.executable)
+    WINRM_ERRORMESSAGE = "{}, try: {} -m pip install pywinrm".format(WINRM_ERRORMESSAGE_BASE, sys.executable)
+    KRB_ERRORMESSAGE = "{}, try: {} -m pip install requests-kerberos".format(KRB_ERRORMESSAGE_BASE, sys.executable)
+    PEXPECT_ERRORMESSAGE = "{}, try: {} -m pip install pexpect".format(PEXPECT_ERRORMESSAGE_BASE, sys.executable)
+    CREDSSP_ERRORMESSAGE = "{}, try: {} -m pip install pywinrm[credssp]".format(CREDSSP_ERRORMESSAGE_BASE, sys.executable)
+    NTLM_ERRORMESSAGE = "{}, try: {} -m pip install requests-ntlm".format(NTLM_ERRORMESSAGE_BASE, sys.executable)
+
+
+if enabledHttpDebug:
+    httpclient_logging_patch(logging.DEBUG)
+
+PACKAGE_ERROR = False
+
 if not URLLIB_INSTALLED:
-    log.error("request and urllib3 not installed, try: pip install requests &&  pip install urllib3")
-    sys.exit(1)
+    log.error(URLLIB_ERRORMESSAGE)
+    PACKAGE_ERROR = True
 
 if not WINRM_INSTALLED:
-    log.error("winrm not installed, try: pip install pywinrm")
-    sys.exit(1)
+    log.error(WINRM_ERRORMESSAGE)
+    PACKAGE_ERROR = True
 
 if authentication == "kerberos" and not KRB_INSTALLED:
-    log.error("Kerberos not installed, try: pip install requests-kerberos")
-    sys.exit(1)
+    log.error(KRB_ERRORMESSAGE)
+    PACKAGE_ERROR = True
 
 if authentication == "kerberos" and not HAS_PEXPECT:
-    log.error("pexpect not installed, try: pip install pexpect")
-    sys.exit(1)
+    log.error(PEXPECT_ERRORMESSAGE)
+    PACKAGE_ERROR = True
 
 if authentication == "credssp" and not HAS_CREDSSP:
-    log.error("CredSSP not installed, try: pip install pywinrm[credssp]")
-    sys.exit(1)
+    log.error(CREDSSP_ERRORMESSAGE)
+    PACKAGE_ERROR = True
 
 if authentication == "ntlm" and not HAS_NTLM:
-    log.error("NTLM not installed, try: pip install requests_ntlm")
+    log.error(NTLM_ERRORMESSAGE)
+    PACKAGE_ERROR = True
+
+if PACKAGE_ERROR:
     sys.exit(1)
 
 arguments = {}
@@ -263,76 +398,150 @@ else:
 if(readtimeout):
     arguments["read_timeout_sec"] = readtimeout
 
+common.configure_proxy(arguments, winrmproxy, winrmnoproxy, endpoint, log)
+
 if(operationtimeout):
     arguments["operation_timeout_sec"] = operationtimeout
 
 arguments["credssp_disable_tlsv1_2"] = diabletls12
 
-if authentication == "kerberos":
-    k5bConfig = kerberosauth.KerberosAuth(krb5config=krb5config, log=log, kinit_command=kinit,username=username, password=password)
-    k5bConfig.get_ticket()
-    arguments["kerberos_delegation"] = krbdelegation
+k5bConfig = None
+try:
+    if authentication == "kerberos":
+        k5bConfig = kerberosauth.KerberosAuth(krb5config=krb5config, log=log, kinit_command=kinit,username=username, password=password)
+        k5bConfig.get_ticket()
+        arguments["kerberos_delegation"] = krbdelegation
 
-session = winrm.Session(target=endpoint,
-                        auth=(username, password),
-                        **arguments)
+    session = winrm.Session(target=endpoint,
+                            auth=(username, password),
+                            **arguments)
 
-winrm.Session.run_cmd = winrm_session.run_cmd
-winrm.Session.run_ps = winrm_session.run_ps
-winrm.Session._clean_error_msg = winrm_session._clean_error_msg
-winrm.Session._strip_namespace = winrm_session._strip_namespace
+    winrm.Session.run_cmd = winrm_session.run_cmd
+    winrm.Session.run_ps = winrm_session.run_ps
+    winrm.Session._clean_error_msg = winrm_session._clean_error_msg
+    winrm.Session._strip_namespace = winrm_session._strip_namespace
 
-tsk = winrm_session.RunCommand(session, shell, exec_command)
-t = threading.Thread(target=tsk.get_response)
-t.start()
-realstdout = sys.stdout
-realstderr = sys.stderr
-sys.stdout = tsk.o_stream
-sys.stderr = tsk.e_stream
+    tsk = winrm_session.RunCommand(session, shell, exec_command, retryconnection, retryconnectiondelay, output_charset)
+    t = threading.Thread(target=tsk.get_response)
+    # Daemonize so the interpreter can exit on abort even while the worker thread is
+    # still blocked polling output over WinRM.
+    t.daemon = True
+    t.start()
+    realstdout = sys.stdout
+    realstderr = sys.stderr
+    sys.stdout = tsk.o_stream
+    sys.stderr = tsk.e_stream
 
-lastpos = 0
-lasterrorpos = 0
+    # Flag set by the signal handler when Rundeck aborts the job. We only set a flag
+    # here and do the actual remote termination from the main loop, to avoid running
+    # network I/O inside the signal handler.
+    abort_requested = {"flag": False}
 
-charset = "utf-8"
-if "RD_NODE_CHARSET" in os.environ:
-    charset = os.getenv("RD_NODE_CHARSET")
+    def _on_abort_signal(signum, frame):
+        abort_requested["flag"] = True
 
-while True:
-    t.join(.1)
+    if terminateonabort:
+        signal.signal(signal.SIGTERM, _on_abort_signal)
+        signal.signal(signal.SIGINT, _on_abort_signal)
 
-    if sys.stdout.tell() != lastpos:
-        sys.stdout.seek(lastpos)
-        read=sys.stdout.read()
-        if isinstance(read, str):
-            realstdout.write(read)
-        else:
-            realstdout.write(read.decode(charset))
+    # Captures the remote PID from the streamed output and hides the marker line.
+    marker_filter = winrm_kill.MarkerFilter()
+    lastpos = 0
+    lasterrorpos = 0
+
+    def _emit(raw_text):
+        """Write streamed output.
+
+        When Terminate On Abort is disabled the output is written through unchanged
+        (legacy behaviour). When enabled, it is routed through the marker filter to
+        capture the remote PID and hide the marker line; the filter buffers partial
+        lines until a newline, which is only acceptable because the feature is opt-in.
+        """
+        if not terminateonabort:
+            realstdout.write(raw_text)
+            return
+        cleaned = marker_filter.feed(raw_text)
+        if marker_filter.pid and not tsk.remote_pid:
+            tsk.remote_pid = marker_filter.pid
+        if cleaned:
+            realstdout.write(cleaned)
+
+    def _abort_and_exit():
+        # Flush whatever we already buffered, then terminate the remote tree.
+        try:
+            sys.stdout = realstdout
+            sys.stderr = realstderr
+            tail = marker_filter.flush()
+            if tail:
+                realstdout.write(tail)
+            realstdout.flush()
+        except Exception as e:
+            log.debug("Error flushing output during abort: %s" % e)
+
+        if k5bConfig:
+            k5bConfig.cleanup()
+        log.warning("Job aborted, terminating remote command on the node...")
+        winrm_kill.terminate_remote(tsk, log)
+        # Force exit: the worker thread may still be blocked on a WinRM receive.
+        os._exit(143)
+
+    while True:
+        t.join(.1)
+
+        if abort_requested["flag"]:
+            _abort_and_exit()
+
+        try:
+            if sys.stdout.tell() != lastpos:
+                sys.stdout.seek(lastpos)
+                read=sys.stdout.read()
+                if isinstance(read, str):
+                    _emit(read)
+                else:
+                    _emit(read.decode(output_charset))
+        except UnicodeDecodeError:
+            try:
+                _emit(read.decode(DEFAULT_CHARSET))
+            except Exception as e:
+                log.error(e)
+        except Exception as e:
+            log.error(e)
 
         lastpos = sys.stdout.tell()
 
-    if not t.is_alive():
-        break
+        if not t.is_alive():
+            break
 
-sys.stdout.seek(0)
-sys.stderr.seek(0)
-sys.stdout = realstdout
-sys.stderr = realstderr
+    # Emit any output still buffered in the marker filter (e.g. a final line with no
+    # trailing newline). Only relevant when the filter was actually used.
+    if terminateonabort:
+        tail = marker_filter.flush()
+        if tail:
+            realstdout.write(tail)
 
-if exitBehaviour == 'console':
-    if tsk.e_std:
-        log.error("Execution finished with the following error")
-        log.error(tsk.e_std)
-        sys.exit(1)
-    else:
-        sys.exit(tsk.stat)
-else:
-    if tsk.stat != 0:
-        log.error("Execution finished with the following exit code: {} ".format(tsk.stat))
-        log.error(tsk.stat)
-        log.error(tsk.e_std)
+    sys.stdout.seek(0)
+    sys.stderr.seek(0)
+    sys.stdout = realstdout
+    sys.stderr = realstderr
 
-        sys.exit(tsk.stat)
-    else:
+    if exitBehaviour == 'console':
         if tsk.e_std:
-            log.warning(tsk.e_std)
-        sys.exit(tsk.stat)
+            log.error("Execution finished with the following error")
+            log.error(tsk.e_std)
+            sys.exit(1)
+        else:
+            sys.exit(tsk.stat)
+    else:
+        if tsk.stat != 0:
+            log.error("Execution finished with the following exit code: {} ".format(tsk.stat))
+            log.error(tsk.stat)
+            log.error(tsk.e_std)
+
+            sys.exit(tsk.stat)
+        else:
+            if tsk.e_std:
+                log.warning(tsk.e_std)
+            sys.exit(tsk.stat)
+finally:
+    if k5bConfig:
+        k5bConfig.cleanup()
