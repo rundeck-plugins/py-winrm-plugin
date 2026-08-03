@@ -25,8 +25,7 @@ providers:
       - name: interpreter
         title: Python Interpreter
         description: "Python Interpreter (Default: python3)"
-        type: Select
-        values: "python,python3"
+        type: String
         default: "python3"
         required: true
         scope: Instance
@@ -253,8 +252,7 @@ providers:
       - name: interpreter
         title: Python Interpreter
         description: "Python Interpreter (Default: python3)"
-        type: Select
-        values: "python,python3"
+        type: String
         default: "python3"
         required: true
         scope: Instance
@@ -450,8 +448,7 @@ providers:
       - name: interpreter
         title: Python Interpreter
         description: "Python Interpreter (Default: python3)"
-        type: Select
-        values: "python,python3"
+        type: String
         default: "python3"
         required: true
         scope: Instance
