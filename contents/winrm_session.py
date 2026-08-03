@@ -37,6 +37,7 @@ PY3 = sys.version_info[0] == 3
 PY34 = sys.version_info[0:2] >= (3, 4)
 RD = "RD_"
 INVALID_CHAR = "%"
+DEFAULT_CODEPAGE = 65001
 
 if PY3:
     string_types = str,
@@ -70,9 +71,17 @@ def run_cmd(self, command, args=(), out_stream=None, err_stream=None, retry=1, r
 
     shell_id = None
 
+    codepage = DEFAULT_CODEPAGE
+    if "RD_NODE_CODEPAGE" in os.environ:
+        try:
+            codepage = int(os.getenv("RD_NODE_CODEPAGE").strip())
+        except ValueError:
+            log.warning("Invalid RD_NODE_CODEPAGE value, falling back to default codepage " + str(DEFAULT_CODEPAGE))
+            codepage = DEFAULT_CODEPAGE
+
     while retryCount < retry:
         try:
-            shell_id = self.protocol.open_shell(codepage=65001, env_vars=envs)
+            shell_id = self.protocol.open_shell(codepage=codepage, env_vars=envs)
             break
         except ConnectionError as e:
             if retryCount < retry:
