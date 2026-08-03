@@ -227,5 +227,8 @@ gradle-app.setting
 
 # End of https://www.toptal.com/developers/gitignore/api/python,java,gradle
 
+# Local build logs
+.temp
+
 /docker/rundeck/plugins/py-winrm-plugin-*
 /docker/resources/*.xml

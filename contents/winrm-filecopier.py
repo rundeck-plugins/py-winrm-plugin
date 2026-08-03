@@ -282,6 +282,7 @@ retryconnectiondelay = 0
 certpath = None
 username = None
 winrmproxy = None
+winrmnoproxy = None
 
 if os.environ.get('RD_CONFIG_OVERRIDE') == 'true':
     override = True
@@ -312,6 +313,9 @@ if "RD_CONFIG_CERTPATH" in os.environ:
 
 if "RD_CONFIG_WINRMPROXY" in os.environ:
     winrmproxy = os.getenv("RD_CONFIG_WINRMPROXY")
+
+if "RD_CONFIG_WINRMNOPROXY" in os.environ:
+    winrmnoproxy = os.getenv("RD_CONFIG_WINRMNOPROXY")
 
 if "RD_OPTION_USERNAME" in os.environ and os.getenv("RD_OPTION_USERNAME"):
     #take user from job
@@ -381,8 +385,7 @@ else:
 
 arguments["credssp_disable_tlsv1_2"] = diabletls12
 
-if(winrmproxy):
-    arguments["proxy"] = winrmproxy
+common.configure_proxy(arguments, winrmproxy, winrmnoproxy, endpoint, log)
 
 if(readtimeout):
     arguments["read_timeout_sec"] = readtimeout
@@ -450,43 +453,48 @@ if authentication == "ntlm" and not HAS_NTLM:
 if PACKAGE_ERROR:
     sys.exit(1)
 
-if authentication == "kerberos":
-    k5bConfig = kerberosauth.KerberosAuth(krb5config=krb5config, log=log, kinit_command=kinit,username=username, password=password)
-    k5bConfig.get_ticket()
-    arguments["kerberos_delegation"] = krbdelegation
+k5bConfig = None
+try:
+    if authentication == "kerberos":
+        k5bConfig = kerberosauth.KerberosAuth(krb5config=krb5config, log=log, kinit_command=kinit,username=username, password=password)
+        k5bConfig.get_ticket()
+        arguments["kerberos_delegation"] = krbdelegation
 
-session = winrm.Session(target=endpoint,
-                        auth=(username, password),
-                        **arguments)
+    session = winrm.Session(target=endpoint,
+                            auth=(username, password),
+                            **arguments)
 
-winrm.Session.run_cmd = winrm_session.run_cmd
-winrm.Session.run_ps = winrm_session.run_ps
-winrm.Session._clean_error_msg = winrm_session._clean_error_msg
-winrm.Session._strip_namespace = winrm_session._strip_namespace
+    winrm.Session.run_cmd = winrm_session.run_cmd
+    winrm.Session.run_ps = winrm_session.run_ps
+    winrm.Session._clean_error_msg = winrm_session._clean_error_msg
+    winrm.Session._strip_namespace = winrm_session._strip_namespace
 
-copy = CopyFiles(session, retryconnection, retryconnectiondelay)
+    copy = CopyFiles(session, retryconnection, retryconnectiondelay)
 
-destination = args.destination
-filename = ntpath.basename(args.destination)
-if filename is None:
-    filename = os.path.basename(args.source)
-
-if filename in args.destination:
-    destination = destination.replace(filename, '')
-else:
-    isFile = common.check_is_file(args.destination)
-    if isFile:
-        filename = common.get_file(args.destination)
-        destination = destination.replace(filename, '')
-    else:
+    destination = args.destination
+    filename = ntpath.basename(args.destination)
+    if filename is None:
         filename = os.path.basename(args.source)
 
-if not os.path.isdir(args.source):
-    copy.winrm_upload(remote_path=destination,
-                      remote_filename=filename,
-                      local_path=args.source,
-                      quiet=quiet,
-                      override=override)
-else:
-    log.warn("The source is a directory, skipping copy")
+    if filename in args.destination:
+        destination = destination.replace(filename, '')
+    else:
+        isFile = common.check_is_file(args.destination)
+        if isFile:
+            filename = common.get_file(args.destination)
+            destination = destination.replace(filename, '')
+        else:
+            filename = os.path.basename(args.source)
+
+    if not os.path.isdir(args.source):
+        copy.winrm_upload(remote_path=destination,
+                          remote_filename=filename,
+                          local_path=args.source,
+                          quiet=quiet,
+                          override=override)
+    else:
+        log.warning("The source is a directory, skipping copy")
+finally:
+    if k5bConfig:
+        k5bConfig.cleanup()
 
