@@ -22,30 +22,46 @@ For further information see:
 * To install requests-kerberos [See](https://github.com/diyan/pywinrm/#to-use-kerberos-authentication-you-need-these-optional-dependencies)
 * To install requests-credssp  [See](https://github.com/diyan/pywinrm/#to-use-credssp-authentication-you-need-these-optional-dependencies)
 
+On distributions that mark the system Python as externally managed (for example Ubuntu 24.04+), either install `pywinrm` with the OS package manager or point the plugin at a virtualenv interpreter that already has `pywinrm` installed. See [Python interpreter](#python-interpreter).
+
+## Python interpreter
+
+The plugin runs on the Rundeck server or Enterprise Runner, not on the Windows node. **Python Interpreter** is a free-text command or path (default: `python3`). Use a command on `PATH` such as `python3`, or a full path such as `/opt/winrm-venv/bin/python3`.
+
+It can be overwritten at node level using `winrm-interpreter`. That is useful when some runners or hosts need a different Python than the project default.
+
 ## Configuration
 
-* **Authentication Type**: The authentication type used for the connection: basic, ntlm, credssp, kerberos. It can be overwriting at node level using `winrm-authtype`
+* **Python Interpreter**: Python command or full path used to run the plugin (default: `python3`). It can be overwritten at node level using `winrm-interpreter`. See [Python interpreter](#python-interpreter).
+* **Authentication Type**: The authentication type used for the connection: basic, ntlm, credssp, kerberos. It can be overwritten at node level using `winrm-authtype`
 * **Username**: (Optional) Username that will connect to the remote node. This value can be set also at node level or as a job input option (with the name `username`)
-* **Password Storage Path**: Key storage path of the window's user password. It can be overwriting at node level using `winrm-password-storage-path`. 
+* **Password Storage Path**: Key storage path of the window's user password. It can be overwritten at node level using `winrm-password-storage-path`. 
   Also the password can be overwritten on the job level using an input secure option called `winrmpassword`
-* **No SSL Verification**: When set to true SSL certificate validation is not performed.  It can be overwriting at node level using `winrm-nossl`
-* **WinRM Transport Protocol**: WinRM transport protocol (http or https). It can be overwriting at node level using `winrm-transport`
-* **WinRM Port**: WinRM port (Default: 5985/5986 for http/https). It can be overwriting at node level using `winrm-port`
-* **Shell**: Windows Shell interpreter (powershell o cmd).  It can be overwriting at node level using `winrm-shell`
-* **Script Exit Behaviour**: Script Exit Behaviour. console: if the std error console has data (default), the process fails. exitcode: script won't fail by default, the user must control the exit code (eg: using try/catch block). See https://github.com/rundeck-plugins/py-winrm-plugin/tree/master#running-scripts
+* **No SSL Verification**: When set to true SSL certificate validation is not performed.  It can be overwritten at node level using `winrm-nossl`
+* **Disable TLS 1.2**: Disable TLS 1.2 in order to run over TLS 1.0. It can be overwritten at node level using `winrm-disable-tls-12`
+* **WinRM Transport Protocol**: WinRM transport protocol (http or https). It can be overwritten at node level using `winrm-transport`
+* **WinRM Port**: WinRM port (Default: 5985/5986 for http/https). It can be overwritten at node level using `winrm-port`
+* **Certificate Path**: Filesystem path to a PEM certificate used for SSL verification (not a Key Storage path). It can be overwritten at node level using `winrm-certpath`
+* **Shell**: Windows Shell interpreter (`powershell` or `cmd`).  It can be overwritten at node level using `winrm-shell`
+* **Script Exit Behaviour**: Script Exit Behaviour. console: if the std error console has data (default), the process fails. exitcode: script won't fail by default, the user must control the exit code (eg: using try/catch block). See [Running Scripts](#running-scripts)
 * **connect/read times out**: maximum seconds to wait before an HTTP connect/read times out (default 30). This value should be slightly higher than operation timeout, as the server can block *at least* that long.  
-It can be overwriting at node level using `winrm-readtimeout`
+It can be overwritten at node level using `winrm-readtimeout`
 * **operation timeout**: maximum allowed time in seconds for any single wsman HTTP operation (default 20). Note that operation timeouts while receiving output (the only wsman operation that should take any significant time, and where these timeouts are expected) will be silently retried indefinitely.
-It can be overwriting at node level using `winrm-operationtimeout`
+It can be overwritten at node level using `winrm-operationtimeout`
+* **Proxy**: Proxy address for communicating with Windows nodes. Example HTTP proxy strings are `http://server:port` and `http://user:pass@server:port`. An example SOCKS5 proxy string is `socks5://user:pass@server:port`. It can be overwritten at node level using `winrm-proxy`
+* **No Proxy List**: Comma-separated list of hosts, IPs, or CIDRs that bypass the proxy. Supports exact IPs, CIDR notation (`192.168.1.0/24`), domain suffixes (`.internal.corp`), hostnames, and wildcard (`*`). Requires **Proxy** to also be set. It can be overwritten at node level using `winrm-noproxy`
 * **retry connection**: Retry a connection when it fails for connectivity issues (default 1).  
-  It can be overwriting at node level using `winrm-retry-connection`
-* **retry connection**: Delay between retries in seconds (default 10 seconds).
-  It can be overwriting at node level using `winrm-retry-connection-delay`
+  It can be overwritten at node level using `winrm-retry-connection`
+* **retry connection delay**: Delay between retries in seconds (default 10 seconds).
+  It can be overwritten at node level using `winrm-retry-connection-delay`
 * **Terminate On Abort**: When enabled, aborting a job terminates the remote command **and its whole process tree** on the Windows node. Disabled by default (legacy behaviour). It can be overwritten at node level using `winrm-terminate-on-abort`. See [Aborting jobs](#aborting-jobs).
+* **Enable HTTP logging in debug mode**: Print extra HTTP logging when job log level is DEBUG. It can be overwritten at node level using `winrm-enable-http-logging`
+* **Clean Escaping**: Cleans unnecessarily escaped characters on commands. It can be overwritten at node level using `clean-escaping`
 
 For Kerberos
 * **krb5 Config File**: path of the krb5.conf (default: /etc/krb5.conf)
 * **Kinit Command**: `kinit` command used for create ticket (default: kinit)
+* **Kerberos Delegation**: if true, the TGT is sent to the target server to allow multiple hops (default: false)
 
 ## Node definition example
 
@@ -63,8 +79,10 @@ For Kerberos
       winrm-password-storage-path="keys/node/windows.password"
       winrm-authtype="basic"/>
 ```
- 
-The username can be overwritten using a job input option called "username"` or it can be set at project level.
+
+The username can be overwritten using a job input option called `username` or it can be set at project level.
+
+Optional node attributes that override project settings include `winrm-interpreter`, `winrm-nossl`, `winrm-transport`, `winrm-port`, `winrm-proxy`, `winrm-noproxy`, `winrm-terminate-on-abort`, and `codepage`. See [Configuration](#configuration) and [Windows code page](#windows-code-page).
  
 ## Transport methods
 The transport methods supported are:
@@ -137,7 +155,7 @@ Don't use the file copier to transfer big files, the performance is not the best
 This plugin include a connectivity test script that can be used as a Workflow Step or it could be called it directly, for example:
 
 ```bash
-python contents/winrm-check.py --username <username> --hostname <windows-server> --password <password>
+python3 contents/winrm-check.py --username <username> --hostname <windows-server> --password <password>
 ```
 
 ## Running Scripts
@@ -208,7 +226,24 @@ Notes:
 * When the option is disabled (the default), the preamble/termination is skipped
   entirely and the plugin behaves exactly as older versions did on abort.
 
+## Windows code page
+
+WinRM shells default to code page **65001** (UTF-8). If command output is garbled on nodes that use a different ANSI code page (for example Japanese Windows, code page 932), set the node attribute `codepage` to the numeric Windows code page:
+
+```yaml
+mywindows:
+  hostname: 192.168.1.10
+  osFamily: windows
+  username: Administrator
+  winrm-password-storage-path: keys/windows.password
+  codepage: 932
+```
+
+Invalid values are ignored and the plugin falls back to 65001.
+
 ## Troubleshooting
+
+If a required Python module is missing and the interpreter is **externally managed**, install the package with the OS package manager or set **Python Interpreter** / `winrm-interpreter` to a virtualenv that has `pywinrm` (and optional Kerberos/CredSSP extras) installed.
 
 If you get the following error:
 

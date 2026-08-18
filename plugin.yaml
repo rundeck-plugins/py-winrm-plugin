@@ -152,7 +152,7 @@ providers:
           groupName: Connection
       - name: terminateonabort
         title: Terminate On Abort
-        description: "When enabled, aborting a job will terminate the remote command. (Experimental)"
+        description: "When enabled, aborting a job will terminate the remote command and its whole process tree on the Windows node."
         type: Boolean
         default: "false"
         required: false
