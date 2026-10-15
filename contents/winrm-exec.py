@@ -274,15 +274,15 @@ if "RD_NODEEXECUTOR_CLIENTCERTPEM" in os.environ and os.getenv("RD_NODEEXECUTOR_
     log.debug('Using client cert pem from node definition: %s' % os.environ['RD_NODEEXECUTOR_CLIENTCERTPEM'])
     clientcertpem = os.getenv("RD_NODEEXECUTOR_CLIENTCERTPEM").strip('\'')
 elif "RD_CONFIG_CLIENTCERTPEM" in os.environ and os.getenv("RD_CONFIG_CLIENTCERTPEM"):
-        log.debug('Using client cert pem from project definition: %s' % os.environ['RD_CONFIG_CLIENTCERTPEM'])
-        clientcertpem = os.getenv("RD_CONFIG_CLIENTCERTPEM").strip('\'')
+    log.debug('Using client cert pem from project definition: %s' % os.environ['RD_CONFIG_CLIENTCERTPEM'])
+    clientcertpem = os.getenv("RD_CONFIG_CLIENTCERTPEM").strip('\'')
 
 if "RD_NODEEXECUTOR_CLIENTCERTPRIVPEM" in os.environ and os.getenv("RD_NODEEXECUTOR_CLIENTCERTPRIVPEM"):
     log.debug('Using client cert privpem from node definition')
     clientcertprivpem = os.getenv("RD_NODEEXECUTOR_CLIENTCERTPRIVPEM").strip('\'')
 elif "RD_CONFIG_CLIENTCERTPRIVPEM" in os.environ and os.getenv("RD_CONFIG_CLIENTCERTPRIVPEM"):
-        log.debug('Using client cert privpem from project definition')
-        clientcertprivpem = os.getenv("RD_CONFIG_CLIENTCERTPRIVPEM").strip('\'')
+    log.debug('Using client cert privpem from project definition')
+    clientcertprivpem = os.getenv("RD_CONFIG_CLIENTCERTPRIVPEM").strip('\'')
 
 if "RD_CONFIG_KRB5CONFIG" in os.environ:
     krb5config = os.getenv("RD_CONFIG_KRB5CONFIG")
@@ -433,6 +433,9 @@ try:
         k5bConfig.get_ticket()
         arguments["kerberos_delegation"] = krbdelegation
     elif authentication == "certificate":
+        if not clientcertpem or not clientcertprivpem:
+            log.error("Client certificate and private key are required for certificate authentication")
+            sys.exit(1)
         # save certificates in temporary files
         import tempfile
         with tempfile.NamedTemporaryFile(prefix="winrm-certpem", delete=False) as fp:
@@ -585,3 +588,4 @@ finally:
         # cleanup temporary files
         os.remove(certpem)
         os.remove(certkeypem)
+

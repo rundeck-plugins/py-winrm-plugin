@@ -484,6 +484,9 @@ try:
         k5bConfig.get_ticket()
         arguments["kerberos_delegation"] = krbdelegation
     elif authentication == "certificate":
+        if not clientcertpem or not clientcertprivpem:
+            log.error("Client certificate and private key are required for certificate authentication")
+            sys.exit(1)
         # save certificates in temporary files
         import tempfile
         with tempfile.NamedTemporaryFile(prefix="winrm-certpem", delete=False) as fp:
