@@ -564,11 +564,11 @@ providers:
         title: Username
         description: "Username from window box"
         type: String
-        required: true
+        required: false
       - name: password_storage_path
         title: Password Storage Path
         type: String
-        required: true
+        required: false
         description: "Password storage password path."
         renderingOptions:
           selectionAccessor: "STORAGE_PATH"
