@@ -523,13 +523,13 @@ try:
 
         if k5bConfig:
             k5bConfig.cleanup()
+        log.warning("Job aborted, terminating remote command on the node...")
+        winrm_kill.terminate_remote(tsk, log)
         # cleanup temporary files
         if certpem:
             os.remove(certpem)
         if certkeypem:
             os.remove(certkeypem)
-        log.warning("Job aborted, terminating remote command on the node...")
-        winrm_kill.terminate_remote(tsk, log)
         # Force exit: the worker thread may still be blocked on a WinRM receive.
         os._exit(143)
 
