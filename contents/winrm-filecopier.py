@@ -493,6 +493,7 @@ try:
             sys.exit(1)
         # save certificates in temporary files
         import tempfile
+        import signal
         signal.signal(signal.SIGTERM, lambda signum, frame: sys.exit(143))
         with tempfile.NamedTemporaryFile(prefix="winrm-certpem", delete=False) as fp:
             certpem = fp.name
