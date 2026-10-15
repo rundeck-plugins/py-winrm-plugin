@@ -283,6 +283,9 @@ if "RD_NODEEXECUTOR_CLIENTCERTPRIVPEM" in os.environ and os.getenv("RD_NODEEXECU
 elif "RD_CONFIG_CLIENTCERTPRIVPEM" in os.environ and os.getenv("RD_CONFIG_CLIENTCERTPRIVPEM"):
     log.debug('Using client cert privpem from project definition')
     clientcertprivpem = os.getenv("RD_CONFIG_CLIENTCERTPRIVPEM").strip('\'')
+# remove private key from environment variables
+os.environ.pop("RD_NODEEXECUTOR_CLIENTCERTPRIVPEM", None)
+os.environ.pop("RD_CONFIG_CLIENTCERTPRIVPEM", None)
 
 if "RD_CONFIG_KRB5CONFIG" in os.environ:
     krb5config = os.getenv("RD_CONFIG_KRB5CONFIG")

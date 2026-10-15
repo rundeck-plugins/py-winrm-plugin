@@ -351,6 +351,9 @@ if "RD_FILECOPIER_CLIENTCERTPRIVPEM" in os.environ and os.getenv("RD_FILECOPIER_
 elif "RD_CONFIG_CLIENTCERTPRIVPEM" in os.environ and os.getenv("RD_CONFIG_CLIENTCERTPRIVPEM"):
         log.debug('Using client cert privpem from project definition')
         clientcertprivpem = os.getenv("RD_CONFIG_CLIENTCERTPRIVPEM").strip('\'')
+# remove private key from environment variables
+os.environ.pop("RD_FILECOPIER_CLIENTCERTPRIVPEM", None)
+os.environ.pop("RD_CONFIG_CLIENTCERTPRIVPEM", None)
 
 quiet = True
 if "RD_CONFIG_DEBUG" in os.environ:
