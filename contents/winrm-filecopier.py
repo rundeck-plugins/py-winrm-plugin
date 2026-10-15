@@ -493,12 +493,13 @@ try:
             sys.exit(1)
         # save certificates in temporary files
         import tempfile
+        signal.signal(signal.SIGTERM, lambda signum, frame: sys.exit(143))
         with tempfile.NamedTemporaryFile(prefix="winrm-certpem", delete=False) as fp:
-            fp.write(clientcertpem.encode())
             certpem = fp.name
+            fp.write(clientcertpem.encode())
         with tempfile.NamedTemporaryFile(prefix="winrm-certkeypem", delete=False) as fp:
-            fp.write(clientcertprivpem.encode())
             certkeypem = fp.name
+            fp.write(clientcertprivpem.encode())
         arguments["cert_pem"] = certpem
         arguments["cert_key_pem"] = certkeypem
         # unset username and password as they are no longer required
