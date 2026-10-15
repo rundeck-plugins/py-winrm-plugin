@@ -482,6 +482,7 @@ if PACKAGE_ERROR:
 
 k5bConfig = None
 try:
+    certpem, certkeypem = None, None
     if authentication == "kerberos":
         k5bConfig = kerberosauth.KerberosAuth(krb5config=krb5config, log=log, kinit_command=kinit,username=username, password=password)
         k5bConfig.get_ticket()
@@ -529,7 +530,8 @@ try:
 finally:
     if k5bConfig:
         k5bConfig.cleanup()
-    if authentication == "certificate":
-        # cleanup temporary files
+    # cleanup temporary files
+    if certpem:
         os.remove(certpem)
+    if certkeypem:
         os.remove(certkeypem)
