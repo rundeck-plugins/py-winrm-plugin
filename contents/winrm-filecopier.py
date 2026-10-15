@@ -342,15 +342,15 @@ if "RD_FILECOPIER_CLIENTCERTPEM" in os.environ and os.getenv("RD_FILECOPIER_CLIE
     log.debug('Using client cert pem from node definition: %s' % os.environ['RD_FILECOPIER_CLIENTCERTPEM'])
     clientcertpem = os.getenv("RD_FILECOPIER_CLIENTCERTPEM").strip('\'')
 elif "RD_CONFIG_CLIENTCERTPEM" in os.environ and os.getenv("RD_CONFIG_CLIENTCERTPEM"):
-        log.debug('Using client cert pem from project definition: %s' % os.environ['RD_CONFIG_CLIENTCERTPEM'])
-        clientcertpem = os.getenv("RD_CONFIG_CLIENTCERTPEM").strip('\'')
+    log.debug('Using client cert pem from project definition: %s' % os.environ['RD_CONFIG_CLIENTCERTPEM'])
+    clientcertpem = os.getenv("RD_CONFIG_CLIENTCERTPEM").strip('\'')
 
 if "RD_FILECOPIER_CLIENTCERTPRIVPEM" in os.environ and os.getenv("RD_FILECOPIER_CLIENTCERTPRIVPEM"):
     log.debug('Using client cert privpem from node definition')
     clientcertprivpem = os.getenv("RD_FILECOPIER_CLIENTCERTPRIVPEM").strip('\'')
 elif "RD_CONFIG_CLIENTCERTPRIVPEM" in os.environ and os.getenv("RD_CONFIG_CLIENTCERTPRIVPEM"):
-        log.debug('Using client cert privpem from project definition')
-        clientcertprivpem = os.getenv("RD_CONFIG_CLIENTCERTPRIVPEM").strip('\'')
+    log.debug('Using client cert privpem from project definition')
+    clientcertprivpem = os.getenv("RD_CONFIG_CLIENTCERTPRIVPEM").strip('\'')
 # remove private key from environment variables
 os.environ.pop("RD_FILECOPIER_CLIENTCERTPRIVPEM", None)
 os.environ.pop("RD_CONFIG_CLIENTCERTPRIVPEM", None)
