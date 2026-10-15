@@ -388,6 +388,9 @@ if "RD_CONFIG_RETRYCONNECTIONDELAY" in os.environ:
 
 if "RD_CONFIG_COPYCHUNKSIZE" in os.environ:
     copychunksize = int(os.getenv("RD_CONFIG_COPYCHUNKSIZE"))
+    if copychunksize <= 0:
+        log.error("Copy chunk size must be a positive integer")
+        sys.exit(1)
 
 if enabledHttpDebug:
     httpclient_logging_patch(logging.DEBUG)
