@@ -172,14 +172,14 @@ if args.debug:
     else:
         debug = False
 
-if args.certpath:
+if common.is_set_arg(args.certpath):
     certpath = args.certpath
 
 winrmproxy = None
 winrmnoproxy = None
-if args.proxy and args.proxy not in ("None", ""):
+if common.is_set_arg(args.proxy):
     winrmproxy = args.proxy
-if args.noproxy and args.noproxy not in ("None", ""):
+if common.is_set_arg(args.noproxy):
     winrmnoproxy = args.noproxy
 
 if not hostname:

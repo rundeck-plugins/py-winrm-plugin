@@ -118,3 +118,16 @@ def configure_proxy(arguments, winrmproxy, winrmnoproxy, endpoint, log):
             log.warning("noproxy is set but no proxy configured; noproxy ignored")
         log.info("Connecting to %s DIRECTLY (no proxy configured)" % endpoint)
     return arguments
+
+
+def is_set_arg(value):
+    """Return True if a script-args value was actually provided.
+
+    Rundeck leaves a ``${config.name}`` reference unexpanded in script-args when
+    the step configuration has no entry for that property (for example jobs
+    saved before the property existed, or defined via YAML/API without it).
+    Such values, along with empty strings and the literal "None", mean "not set".
+    """
+    if not value or value in ("None", ""):
+        return False
+    return not (value.startswith("${") and value.endswith("}"))
