@@ -183,12 +183,32 @@ class WinRmError(RemoteCommandError):
     pass
 
 
+class RemoteFileExistsError(Exception):
+    """Raised when the destination exists and override is not enabled."""
+    pass
+
+
 class CopyFiles(object):
 
     def __init__(self, session, retry, retry_delay):
         self.session = session
         self.retry = retry
         self.retry_delay = retry_delay
+
+    def remote_file_exists(self, full_path):
+        """Return True if full_path exists as a file on the remote node."""
+        script = 'Test-Path {0} -PathType Leaf'.format(full_path)
+        result = self.session.run_ps(script,
+                                     retry=self.retry,
+                                     retry_delay=self.retry_delay)
+        if result.status_code != 0:
+            raise WinRmError(script, result.status_code,
+                             result.std_out, result.std_err)
+        std_out = result.std_out
+        if isinstance(std_out, bytes):
+            std_out = std_out.decode('utf-8', 'replace')
+        lines = std_out.strip().splitlines()
+        return bool(lines) and lines[-1].strip() == 'True'
 
 
     def winrm_upload(self,
@@ -212,6 +232,13 @@ class CopyFiles(object):
 
         if override:
             self.session.run_ps('if ((Test-Path {0} -PathType Leaf)) {{ rm {0} }}'.format(full_path), retry=self.retry, retry_delay=self.retry_delay)
+        elif self.remote_file_exists(full_path):
+            # Chunks are written with add-content, so writing to an existing
+            # file would append to it and silently corrupt it.
+            raise RemoteFileExistsError(
+                'Remote file {} already exists. Enable the "Override?" option '
+                'to replace it.'.format(full_path)
+            )
 
         size = os.stat(local_path).st_size
         with open(local_path, 'rb') as f:
