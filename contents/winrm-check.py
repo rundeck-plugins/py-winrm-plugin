@@ -260,9 +260,6 @@ else:
     NTLM_ERRORMESSAGE = "{}, try: {} -m pip install requests-ntlm".format(NTLM_ERRORMESSAGE_BASE, sys.executable)
 
 
-if enabledHttpDebug:
-    httpclient_logging_patch(logging.DEBUG)
-
 PACKAGE_ERROR = False
 
 if not URLLIB_INSTALLED:
