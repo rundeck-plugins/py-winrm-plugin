@@ -9,7 +9,6 @@ import base64
 import time
 import common
 import logging
-import ntpath
 import xml.etree.ElementTree as ET
 import colored_formatter
 from colored_formatter import ColoredFormatter
@@ -471,20 +470,7 @@ try:
 
     copy = CopyFiles(session, retryconnection, retryconnectiondelay)
 
-    destination = args.destination
-    filename = ntpath.basename(args.destination)
-    if filename is None:
-        filename = os.path.basename(args.source)
-
-    if filename in args.destination:
-        destination = destination.replace(filename, '')
-    else:
-        isFile = common.check_is_file(args.destination)
-        if isFile:
-            filename = common.get_file(args.destination)
-            destination = destination.replace(filename, '')
-        else:
-            filename = os.path.basename(args.source)
+    destination, filename = common.split_destination(args.destination, args.source)
 
     if not os.path.isdir(args.source):
         copy.winrm_upload(remote_path=destination,
