@@ -78,49 +78,106 @@ class WinrmUploadTests(unittest.TestCase):
     def tearDown(self):
         os.remove(self.local)
 
-    def _upload(self, session, override):
-        with redirect_stdout(io.StringIO()):
+    def _upload(self, session, override=False, if_exists=None):
+        out = io.StringIO()
+        with redirect_stdout(out):
             CopyFiles(session, 1, 0).winrm_upload(
                 remote_path="C:\\tmp", remote_filename="file.txt",
-                local_path=self.local, step=4, override=override)
+                local_path=self.local, step=4, override=override,
+                if_exists=if_exists)
+        return out.getvalue()
 
-    def test_new_file_is_written(self):
-        session = _FakeSession(exists=False)
-        self._upload(session, override=False)
-        self.assertEqual(session.written, b"hello world")
-
-    def test_existing_file_without_override_fails_and_is_untouched(self):
-        session = _FakeSession(exists=True)
+    def _existing(self, **kwargs):
+        session = _FakeSession(exists=True, **kwargs)
         session.written = b"original"
-        with self.assertRaises(RemoteFileExistsError) as ctx:
-            self._upload(session, override=False)
-        self.assertIn("C:\\tmp\\file.txt", str(ctx.exception))
-        self.assertIn("Override", str(ctx.exception))
-        self.assertEqual(session.written, b"original")
-        self.assertFalse(any(s.startswith("add-content")
-                             for s in session.scripts))
+        return session
 
-    def test_second_copy_without_override_does_not_append(self):
+    @staticmethod
+    def _wrote(session):
+        return any(s.startswith("add-content") for s in session.scripts)
+
+    # Not set: "Override?" decides, as before the setting existed.
+
+    def test_default_new_file_is_written(self):
         session = _FakeSession(exists=False)
-        self._upload(session, override=False)
-        with self.assertRaises(RemoteFileExistsError):
-            self._upload(session, override=False)
+        out = self._upload(session)
+        self.assertEqual(session.written, b"hello world")
+        self.assertNotIn("WARNING", out)
+
+    def test_default_appends_to_existing_file_and_warns(self):
+        session = self._existing()
+        out = self._upload(session)
+        self.assertEqual(session.written, b"originalhello world")
+        self.assertIn("WARNING", out)
+        self.assertIn("C:\\tmp\\file.txt", out)
+        self.assertIn("If destination exists", out)
+
+    def test_default_failed_existence_check_still_copies(self):
+        session = _FakeSession(exists=False, test_path_code=1)
+        self._upload(session)
         self.assertEqual(session.written, b"hello world")
 
     def test_override_replaces_existing_file(self):
-        session = _FakeSession(exists=True)
-        session.written = b"original"
-        self._upload(session, override=True)
+        session = self._existing()
+        out = self._upload(session, override=True)
         self.assertEqual(session.written, b"hello world")
         self.assertFalse(any(s.startswith("Test-Path")
                              for s in session.scripts))
+        self.assertNotIn("WARNING", out)
 
-    def test_failed_existence_check_raises(self):
+    # Explicit "If destination exists" values.
+
+    def test_fail_new_file_is_written(self):
+        session = _FakeSession(exists=False)
+        self._upload(session, if_exists="fail")
+        self.assertEqual(session.written, b"hello world")
+
+    def test_fail_existing_file_raises_and_is_untouched(self):
+        session = self._existing()
+        with self.assertRaises(RemoteFileExistsError) as ctx:
+            self._upload(session, if_exists="fail")
+        self.assertIn("C:\\tmp\\file.txt", str(ctx.exception))
+        self.assertEqual(session.written, b"original")
+        self.assertFalse(self._wrote(session))
+
+    def test_fail_second_copy_does_not_append(self):
+        session = _FakeSession(exists=False)
+        self._upload(session, if_exists="fail")
+        with self.assertRaises(RemoteFileExistsError):
+            self._upload(session, if_exists="fail")
+        self.assertEqual(session.written, b"hello world")
+
+    def test_fail_takes_precedence_over_override(self):
+        session = self._existing()
+        with self.assertRaises(RemoteFileExistsError):
+            self._upload(session, override=True, if_exists="fail")
+        self.assertEqual(session.written, b"original")
+
+    def test_fail_failed_existence_check_raises(self):
         session = _FakeSession(exists=False, test_path_code=1)
         with self.assertRaises(WinRmError):
-            self._upload(session, override=False)
-        self.assertFalse(any(s.startswith("add-content")
+            self._upload(session, if_exists="fail")
+        self.assertFalse(self._wrote(session))
+
+    def test_overwrite_replaces_existing_file(self):
+        session = self._existing()
+        self._upload(session, if_exists="overwrite")
+        self.assertEqual(session.written, b"hello world")
+
+    def test_append_appends_without_warning(self):
+        session = self._existing()
+        out = self._upload(session, override=True, if_exists="append")
+        self.assertEqual(session.written, b"originalhello world")
+        self.assertNotIn("WARNING", out)
+        self.assertFalse(any(s.startswith("Test-Path")
                              for s in session.scripts))
+
+    def test_invalid_value_raises_before_any_remote_call(self):
+        session = self._existing()
+        with self.assertRaises(ValueError) as ctx:
+            self._upload(session, if_exists="replace")
+        self.assertIn("replace", str(ctx.exception))
+        self.assertEqual(session.scripts, [])
 
 
 if __name__ == "__main__":

@@ -184,11 +184,13 @@ class WinRmError(RemoteCommandError):
 
 
 class RemoteFileExistsError(Exception):
-    """Raised when the destination exists and override is not enabled."""
+    """Raised when the destination exists and "If destination exists" is fail."""
     pass
 
 
 class CopyFiles(object):
+
+    IF_EXISTS_MODES = ('overwrite', 'fail', 'append')
 
     def __init__(self, session, retry, retry_delay):
         self.session = session
@@ -217,7 +219,17 @@ class CopyFiles(object):
                     local_path,
                     step=2048,
                     quiet=True,
-                    override=False):
+                    override=False,
+                    if_exists=None):
+        # if_exists is the "If destination exists" setting. When it is not
+        # set, keep the behaviour from before it existed: "Override?" on
+        # replaces the file, off appends to it.
+        mode = if_exists or ('overwrite' if override else 'append')
+        if mode not in self.IF_EXISTS_MODES:
+            raise ValueError(
+                'Invalid "If destination exists" value {!r}, expected one '
+                'of: {}'.format(if_exists, ', '.join(self.IF_EXISTS_MODES))
+            )
 
         if remote_path.endswith('/') or remote_path.endswith('\\'):
             full_path = remote_path + remote_filename
@@ -230,15 +242,26 @@ class CopyFiles(object):
                             retry=self.retry,
                             retry_delay=self.retry_delay)
 
-        if override:
+        # Chunks are written with add-content, so anything already at
+        # full_path is appended to unless it is removed first.
+        if mode == 'overwrite':
             self.session.run_ps('if ((Test-Path {0} -PathType Leaf)) {{ rm {0} }}'.format(full_path), retry=self.retry, retry_delay=self.retry_delay)
-        elif self.remote_file_exists(full_path):
-            # Chunks are written with add-content, so writing to an existing
-            # file would append to it and silently corrupt it.
-            raise RemoteFileExistsError(
-                'Remote file {} already exists. Enable the "Override?" option '
-                'to replace it.'.format(full_path)
-            )
+        elif mode == 'fail':
+            if self.remote_file_exists(full_path):
+                raise RemoteFileExistsError(
+                    'Remote file {} already exists and "If destination '
+                    'exists" is set to fail.'.format(full_path)
+                )
+        elif if_exists is None:
+            # Implicit append: warn, but never fail a copy that used to work.
+            try:
+                exists = self.remote_file_exists(full_path)
+            except WinRmError:
+                exists = False
+            if exists:
+                print('WARNING: remote file {} already exists, appending to '
+                      'it. Set "If destination exists" (ifexists) to '
+                      'overwrite or fail to change this.'.format(full_path))
 
         size = os.stat(local_path).st_size
         with open(local_path, 'rb') as f:
@@ -313,6 +336,8 @@ winrmnoproxy = None
 
 if os.environ.get('RD_CONFIG_OVERRIDE') == 'true':
     override = True
+
+ifexists = os.environ.get('RD_CONFIG_IFEXISTS', '').strip().lower() or None
 
 if "RD_CONFIG_AUTHTYPE" in os.environ:
     authentication = os.getenv("RD_CONFIG_AUTHTYPE")
@@ -518,7 +543,8 @@ try:
                           remote_filename=filename,
                           local_path=args.source,
                           quiet=quiet,
-                          override=override)
+                          override=override,
+                          if_exists=ifexists)
     else:
         log.warning("The source is a directory, skipping copy")
 finally:

@@ -369,7 +369,16 @@ providers:
       - type: Boolean
         name: override
         title: Override?
-        description: 'Overrides the file on the remote server if it already exists'
+        description: 'Overrides the file on the remote server if it already exists. Ignored when "If destination exists" is set.'
+      - name: ifexists
+        title: If destination exists
+        description: "What to do when the destination file already exists: overwrite it, fail the copy, or append to it. When not set, \"Override?\" decides as before (on: overwrite, off: append). It can be overwritten at node level using `winrm-copy-if-exists`"
+        type: Select
+        values: "overwrite,fail,append"
+        required: false
+        scope: Instance
+        renderingOptions:
+          instance-scope-node-attribute: "winrm-copy-if-exists"
       - name: krb5config
         title: krb5 Config File
         description: "Path of krb5.conf file"
