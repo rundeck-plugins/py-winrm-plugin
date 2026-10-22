@@ -150,7 +150,7 @@ $ pip install pexpect
 The file copier writes the file in chunks that are added to the destination, so a file that is already there gets appended to unless it is removed first. The **If destination exists** setting (`ifexists`) controls this:
 
 * `overwrite`: replace the existing file.
-* `fail`: fail the copy and leave the existing file untouched.
+* `fail`: fail the copy and leave the existing file untouched. The copier creates the destination before writing to it, so if two copies to the same new file overlap, one of them fails. If a copy fails partway through, the partial file stays, and later copies in `fail` mode fail until it is removed.
 * `append`: add the new content to the end of the existing file.
 
 When it is not set, **Override?** decides, as in earlier releases: on means `overwrite`, off means `append`. In that case the copier logs a warning when it appends to an existing file. To make the copy fail instead, set it in the project or framework configuration, or per node with the `winrm-copy-if-exists` attribute:

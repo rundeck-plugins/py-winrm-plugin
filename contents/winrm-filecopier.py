@@ -202,6 +202,36 @@ class CopyFiles(object):
         result = self.session.run_ps(script,
                                      retry=self.retry,
                                      retry_delay=self.retry_delay)
+        return self._last_line(script, result) == 'True'
+
+    def claim_remote_file(self, full_path):
+        """Create full_path on the remote node if it does not exist yet.
+
+        Return True if this call created it, False if it was already there.
+        The check and the create are one filesystem operation (CreateNew),
+        so two copies to the same new path cannot both get True.
+        """
+        path = "'{0}'".format(full_path.replace("'", "''"))
+        # DirectoryNotFoundException is also an IOException, so only report
+        # EXISTS when the path really is there; anything else is an error.
+        script = (
+            "try {{ [System.IO.File]::Open({0}, 'CreateNew', 'Write')"
+            ".Dispose(); 'CREATED' }} "
+            "catch [System.IO.IOException] {{ "
+            "if (Test-Path -LiteralPath {0}) {{ 'EXISTS' }} else {{ throw }} }}"
+        ).format(path)
+        result = self.session.run_ps(script,
+                                     retry=self.retry,
+                                     retry_delay=self.retry_delay)
+        line = self._last_line(script, result)
+        if line not in ('CREATED', 'EXISTS'):
+            raise WinRmError(script, result.status_code,
+                             result.std_out, result.std_err)
+        return line == 'CREATED'
+
+    @staticmethod
+    def _last_line(script, result):
+        """Return the last line of a successful command's output."""
         if result.status_code != 0:
             raise WinRmError(script, result.status_code,
                              result.std_out, result.std_err)
@@ -209,7 +239,7 @@ class CopyFiles(object):
         if isinstance(std_out, bytes):
             std_out = std_out.decode('utf-8', 'replace')
         lines = std_out.strip().splitlines()
-        return bool(lines) and lines[-1].strip() == 'True'
+        return lines[-1].strip() if lines else ''
 
 
     def winrm_upload(self,
@@ -246,7 +276,9 @@ class CopyFiles(object):
         if mode == 'overwrite':
             self.session.run_ps('if ((Test-Path {0} -PathType Leaf)) {{ rm {0} }}'.format(full_path), retry=self.retry, retry_delay=self.retry_delay)
         elif mode == 'fail':
-            if self.remote_file_exists(full_path):
+            # Claim the file before writing; a separate exists check would
+            # let two overlapping copies both see "absent" and both append.
+            if not self.claim_remote_file(full_path):
                 raise RemoteFileExistsError(
                     'Remote file {} already exists and "If destination '
                     'exists" is set to fail.'.format(full_path)
