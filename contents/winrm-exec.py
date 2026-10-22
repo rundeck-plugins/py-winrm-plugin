@@ -180,6 +180,10 @@ if "RD_CONFIG_DISABLETLS12" in os.environ:
 if "RD_CONFIG_SHELL" in os.environ:
     shell = os.getenv("RD_CONFIG_SHELL")
 
+if shell not in winrm_session.SUPPORTED_SHELLS:
+    log.error(winrm_session.unsupported_shell_message(shell))
+    sys.exit(1)
+
 if "RD_CONFIG_EXITBEHAVIOUR" in os.environ:
     exitBehaviour = os.getenv("RD_CONFIG_EXITBEHAVIOUR")
 
@@ -203,7 +207,7 @@ if "RD_CONFIG_CLEANESCAPING" in os.environ:
 
 if "RD_CONFIG_WINRMPROXY" in os.environ:
     winrmproxy = os.getenv("RD_CONFIG_WINRMPROXY")
-    log.debug("winrmproxy: " + str(winrmproxy))
+    log.debug("winrmproxy: " + str(common._redact_proxy_url(winrmproxy)))
 
 if "RD_CONFIG_WINRMNOPROXY" in os.environ:
     winrmnoproxy = os.getenv("RD_CONFIG_WINRMNOPROXY")

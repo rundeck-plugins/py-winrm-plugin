@@ -1,5 +1,6 @@
 import re
 import os
+import ntpath
 
 
 def check_is_file(destination):
@@ -25,6 +26,28 @@ def get_file(destination):
         filename = file
 
     return filename
+
+
+def split_destination(destination, source):
+    """Split a remote destination path into (directory, filename).
+
+    The destination is treated as a Windows path, so both ``\\`` and ``/``
+    are accepted as separators. The directory part is returned with its
+    trailing separator, which ``winrm_upload`` accepts as-is.
+
+    If the destination ends with a separator (i.e. it names a directory),
+    the filename falls back to the basename of the local ``source`` file.
+
+    :param destination: remote destination path as given to the file copier
+    :param source: local source file path
+    :return: tuple of (remote directory, remote filename)
+    """
+    filename = ntpath.split(destination)[1]
+    directory = destination[:len(destination) - len(filename)]
+    if not filename:
+        filename = os.path.basename(source)
+    return directory, filename
+
 
 def removeSimpleQuotes(command):
    result = cleanSimpleQuoteCommand(command)
@@ -118,3 +141,16 @@ def configure_proxy(arguments, winrmproxy, winrmnoproxy, endpoint, log):
             log.warning("noproxy is set but no proxy configured; noproxy ignored")
         log.info("Connecting to %s DIRECTLY (no proxy configured)" % endpoint)
     return arguments
+
+
+def is_set_arg(value):
+    """Return True if a script-args value was actually provided.
+
+    Rundeck leaves a ``${config.name}`` reference unexpanded in script-args when
+    the step configuration has no entry for that property (for example jobs
+    saved before the property existed, or defined via YAML/API without it).
+    Such values, along with empty strings and the literal "None", mean "not set".
+    """
+    if not value or value in ("None", ""):
+        return False
+    return not (value.startswith("${") and value.endswith("}"))

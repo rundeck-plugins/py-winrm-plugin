@@ -38,6 +38,8 @@ PY34 = sys.version_info[0:2] >= (3, 4)
 RD = "RD_"
 INVALID_CHAR = "%"
 DEFAULT_CODEPAGE = 65001
+# Shell values RunCommand knows how to dispatch (see plugin.yaml "shell").
+SUPPORTED_SHELLS = ("cmd", "powershell")
 
 if PY3:
     string_types = str,
@@ -225,7 +227,7 @@ class RunCommand:
                 self.e_std = response.std_err
                 self.stat = response.status_code
 
-            if self.shell == "powershell":
+            elif self.shell == "powershell":
                 response = self.session.run_ps(self.exec_command, out_stream=self.o_stream, err_stream=self.e_stream,
                                                output_charset=self.output_charset, retry=self.retry, retry_delay=self.retry_delay,
                                                tracker=self)
@@ -233,9 +235,21 @@ class RunCommand:
                 self.e_std = response.std_err
                 self.stat = response.status_code
 
+            else:
+                # Without this, nothing runs and stat stays None, which the
+                # caller turns into exit code 0 (a false success).
+                self.e_std = unsupported_shell_message(self.shell)
+                self.stat = -1
+
         except Exception as e:
             self.e_std = e
             self.stat = -1
+
+
+def unsupported_shell_message(shell):
+    """Error text for a shell value that is not one of SUPPORTED_SHELLS."""
+    return "Unsupported shell '{0}': must be one of {1} (check the 'winrm-shell' node attribute or the Shell setting)".format(
+        shell, ", ".join(SUPPORTED_SHELLS))
 
 
 def to_text(obj, encoding='utf-8', errors="ignore"):

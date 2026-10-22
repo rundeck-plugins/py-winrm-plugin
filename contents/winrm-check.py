@@ -172,14 +172,14 @@ if args.debug:
     else:
         debug = False
 
-if args.certpath:
+if common.is_set_arg(args.certpath):
     certpath = args.certpath
 
 winrmproxy = None
 winrmnoproxy = None
-if args.proxy and args.proxy not in ("None", ""):
+if common.is_set_arg(args.proxy):
     winrmproxy = args.proxy
-if args.noproxy and args.noproxy not in ("None", ""):
+if common.is_set_arg(args.noproxy):
     winrmnoproxy = args.noproxy
 
 if not hostname:
@@ -259,9 +259,6 @@ else:
     CREDSSP_ERRORMESSAGE = "{}, try: {} -m pip install pywinrm[credssp]".format(CREDSSP_ERRORMESSAGE_BASE, sys.executable)
     NTLM_ERRORMESSAGE = "{}, try: {} -m pip install requests-ntlm".format(NTLM_ERRORMESSAGE_BASE, sys.executable)
 
-
-if enabledHttpDebug:
-    httpclient_logging_patch(logging.DEBUG)
 
 PACKAGE_ERROR = False
 
