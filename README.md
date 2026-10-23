@@ -91,6 +91,7 @@ The transport methods supported are:
 * kerberos
 * ntlm
 * credssp
+* certificate
 
 Further information [here](https://github.com/diyan/pywinrm#valid-transport-options)
 
