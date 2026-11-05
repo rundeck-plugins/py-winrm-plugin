@@ -18,6 +18,8 @@ providers:
     description: Executing Scripts or Commands on remote Windows computer
     service: NodeExecutor
     plugin-type: script
+    plugin-meta:
+      remote-command-shell: '${config.shell}'
     script-interpreter: ${config.interpreter} -u
     script-file: winrm-exec.py
     script-args: ${node.hostname}
