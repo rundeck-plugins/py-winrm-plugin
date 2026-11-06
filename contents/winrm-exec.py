@@ -155,6 +155,8 @@ username = None
 winrmproxy = None
 winrmnoproxy = None
 terminateonabort = False
+clientcertpem = None
+clientcertprivpem = None
 
 if "RD_CONFIG_AUTHTYPE" in os.environ:
     authentication = os.getenv("RD_CONFIG_AUTHTYPE")
@@ -268,6 +270,23 @@ else:
         log.debug('Using password from node')
         password = os.getenv("RD_CONFIG_PASSWORD_STORAGE_PATH")
 
+if "RD_NODEEXECUTOR_CLIENTCERTPEM" in os.environ and os.getenv("RD_NODEEXECUTOR_CLIENTCERTPEM"):
+    log.debug('Using client cert pem from node definition: %s' % os.environ['RD_NODEEXECUTOR_CLIENTCERTPEM'])
+    clientcertpem = os.getenv("RD_NODEEXECUTOR_CLIENTCERTPEM").strip('\'')
+elif "RD_CONFIG_CLIENTCERTPEM" in os.environ and os.getenv("RD_CONFIG_CLIENTCERTPEM"):
+    log.debug('Using client cert pem from project definition: %s' % os.environ['RD_CONFIG_CLIENTCERTPEM'])
+    clientcertpem = os.getenv("RD_CONFIG_CLIENTCERTPEM").strip('\'')
+
+if "RD_NODEEXECUTOR_CLIENTCERTPRIVPEM" in os.environ and os.getenv("RD_NODEEXECUTOR_CLIENTCERTPRIVPEM"):
+    log.debug('Using client cert privpem from node definition')
+    clientcertprivpem = os.getenv("RD_NODEEXECUTOR_CLIENTCERTPRIVPEM").strip('\'')
+elif "RD_CONFIG_CLIENTCERTPRIVPEM" in os.environ and os.getenv("RD_CONFIG_CLIENTCERTPRIVPEM"):
+    log.debug('Using client cert privpem from project definition')
+    clientcertprivpem = os.getenv("RD_CONFIG_CLIENTCERTPRIVPEM").strip('\'')
+# remove private key from environment variables
+os.environ.pop("RD_NODEEXECUTOR_CLIENTCERTPRIVPEM", None)
+os.environ.pop("RD_CONFIG_CLIENTCERTPRIVPEM", None)
+
 if "RD_CONFIG_KRB5CONFIG" in os.environ:
     krb5config = os.getenv("RD_CONFIG_KRB5CONFIG")
 
@@ -288,7 +307,8 @@ if "RD_NODE_OUTPUT_CHARSET" in os.environ:
 log.debug("------------------------------------------")
 log.debug("endpoint:" + endpoint)
 log.debug("authentication:" + authentication)
-log.debug("username:" + username)
+log.debug("username:" + str(username))
+log.debug("clientcertpem:" + str(clientcertpem))
 log.debug("nossl:" + str(nossl))
 log.debug("diabletls12:" + str(diabletls12))
 log.debug("krb5config:" + str(krb5config))
@@ -411,14 +431,34 @@ arguments["credssp_disable_tlsv1_2"] = diabletls12
 
 k5bConfig = None
 try:
+    certpem, certkeypem = None, None
     if authentication == "kerberos":
         k5bConfig = kerberosauth.KerberosAuth(krb5config=krb5config, log=log, kinit_command=kinit,username=username, password=password)
         k5bConfig.get_ticket()
         arguments["kerberos_delegation"] = krbdelegation
+    elif authentication == "certificate":
+        if not clientcertpem or not clientcertprivpem:
+            log.error("Client certificate and private key are required for certificate authentication")
+            sys.exit(1)
+        # save certificates in temporary files
+        import tempfile
+        signal.signal(signal.SIGTERM, lambda signum, frame: sys.exit(143))
+        with tempfile.NamedTemporaryFile(prefix="winrm-certpem", delete=False) as fp:
+            certpem = fp.name
+            fp.write(clientcertpem.encode())
+        with tempfile.NamedTemporaryFile(prefix="winrm-certkeypem", delete=False) as fp:
+            certkeypem = fp.name
+            fp.write(clientcertprivpem.encode())
+        arguments["cert_pem"] = certpem
+        arguments["cert_key_pem"] = certkeypem
+        # unset username and password as they are no longer required
+        username = None
+        password = None
 
     session = winrm.Session(target=endpoint,
                             auth=(username, password),
                             **arguments)
+
 
     winrm.Session.run_cmd = winrm_session.run_cmd
     winrm.Session.run_ps = winrm_session.run_ps
@@ -486,6 +526,11 @@ try:
             k5bConfig.cleanup()
         log.warning("Job aborted, terminating remote command on the node...")
         winrm_kill.terminate_remote(tsk, log)
+        # cleanup temporary files
+        if certpem:
+            os.remove(certpem)
+        if certkeypem:
+            os.remove(certkeypem)
         # Force exit: the worker thread may still be blocked on a WinRM receive.
         os._exit(143)
 
@@ -549,3 +594,9 @@ try:
 finally:
     if k5bConfig:
         k5bConfig.cleanup()
+    # cleanup temporary files
+    if certpem:
+        os.remove(certpem)
+    if certkeypem:
+        os.remove(certkeypem)
+

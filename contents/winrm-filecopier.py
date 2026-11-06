@@ -282,6 +282,9 @@ certpath = None
 username = None
 winrmproxy = None
 winrmnoproxy = None
+clientcertpem = None
+clientcertprivpem = None
+copychunksize = 2048
 
 if os.environ.get('RD_CONFIG_OVERRIDE') == 'true':
     override = True
@@ -335,6 +338,23 @@ else:
     if "RD_CONFIG_PASSWORD_STORAGE_PATH" in os.environ:
         password = os.getenv("RD_CONFIG_PASSWORD_STORAGE_PATH")
 
+if "RD_FILECOPIER_CLIENTCERTPEM" in os.environ and os.getenv("RD_FILECOPIER_CLIENTCERTPEM"):
+    log.debug('Using client cert pem from node definition: %s' % os.environ['RD_FILECOPIER_CLIENTCERTPEM'])
+    clientcertpem = os.getenv("RD_FILECOPIER_CLIENTCERTPEM").strip('\'')
+elif "RD_CONFIG_CLIENTCERTPEM" in os.environ and os.getenv("RD_CONFIG_CLIENTCERTPEM"):
+    log.debug('Using client cert pem from project definition: %s' % os.environ['RD_CONFIG_CLIENTCERTPEM'])
+    clientcertpem = os.getenv("RD_CONFIG_CLIENTCERTPEM").strip('\'')
+
+if "RD_FILECOPIER_CLIENTCERTPRIVPEM" in os.environ and os.getenv("RD_FILECOPIER_CLIENTCERTPRIVPEM"):
+    log.debug('Using client cert privpem from node definition')
+    clientcertprivpem = os.getenv("RD_FILECOPIER_CLIENTCERTPRIVPEM").strip('\'')
+elif "RD_CONFIG_CLIENTCERTPRIVPEM" in os.environ and os.getenv("RD_CONFIG_CLIENTCERTPRIVPEM"):
+    log.debug('Using client cert privpem from project definition')
+    clientcertprivpem = os.getenv("RD_CONFIG_CLIENTCERTPRIVPEM").strip('\'')
+# remove private key from environment variables
+os.environ.pop("RD_FILECOPIER_CLIENTCERTPRIVPEM", None)
+os.environ.pop("RD_CONFIG_CLIENTCERTPRIVPEM", None)
+
 quiet = True
 if "RD_CONFIG_DEBUG" in os.environ:
     quiet = False
@@ -369,11 +389,19 @@ if "RD_CONFIG_RETRYCONNECTION" in os.environ:
 if "RD_CONFIG_RETRYCONNECTIONDELAY" in os.environ:
     retryconnectiondelay = int(os.getenv("RD_CONFIG_RETRYCONNECTIONDELAY"))
 
+if "RD_CONFIG_COPYCHUNKSIZE" in os.environ:
+    copychunksize = int(os.getenv("RD_CONFIG_COPYCHUNKSIZE"))
+    if copychunksize <= 0:
+        log.error("Copy chunk size must be a positive integer")
+        sys.exit(1)
+
 if enabledHttpDebug:
     httpclient_logging_patch(logging.DEBUG)
 
 endpoint = transport+'://'+args.hostname+':'+port
-arguments = {"transport": authentication}
+
+arguments = {}
+arguments["transport"] = authentication
 
 if(nossl == True):
     arguments["server_cert_validation"] = "ignore"
@@ -454,10 +482,30 @@ if PACKAGE_ERROR:
 
 k5bConfig = None
 try:
+    certpem, certkeypem = None, None
     if authentication == "kerberos":
         k5bConfig = kerberosauth.KerberosAuth(krb5config=krb5config, log=log, kinit_command=kinit,username=username, password=password)
         k5bConfig.get_ticket()
         arguments["kerberos_delegation"] = krbdelegation
+    elif authentication == "certificate":
+        if not clientcertpem or not clientcertprivpem:
+            log.error("Client certificate and private key are required for certificate authentication")
+            sys.exit(1)
+        # save certificates in temporary files
+        import tempfile
+        import signal
+        signal.signal(signal.SIGTERM, lambda signum, frame: sys.exit(143))
+        with tempfile.NamedTemporaryFile(prefix="winrm-certpem", delete=False) as fp:
+            certpem = fp.name
+            fp.write(clientcertpem.encode())
+        with tempfile.NamedTemporaryFile(prefix="winrm-certkeypem", delete=False) as fp:
+            certkeypem = fp.name
+            fp.write(clientcertprivpem.encode())
+        arguments["cert_pem"] = certpem
+        arguments["cert_key_pem"] = certkeypem
+        # unset username and password as they are no longer required
+        username = None
+        password = None
 
     session = winrm.Session(target=endpoint,
                             auth=(username, password),
@@ -477,10 +525,15 @@ try:
                           remote_filename=filename,
                           local_path=args.source,
                           quiet=quiet,
-                          override=override)
+                          override=override,
+                          step=copychunksize)
     else:
         log.warning("The source is a directory, skipping copy")
 finally:
     if k5bConfig:
         k5bConfig.cleanup()
-
+    # cleanup temporary files
+    if certpem:
+        os.remove(certpem)
+    if certkeypem:
+        os.remove(certkeypem)
