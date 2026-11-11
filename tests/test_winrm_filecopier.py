@@ -7,8 +7,10 @@ exercised against a fake session. No live Windows node is needed.
 
 import ast
 import base64
+import fnmatch
 import io
 import os
+import re
 import sys
 import tempfile
 import time
@@ -83,6 +85,51 @@ class _FakeSession(object):
         return _Response()
 
 
+class _DirSession(object):
+    """Simulates several files in one directory, with PowerShell's -Path
+    wildcard expansion, to catch commands that hit the wrong file."""
+
+    _LITERAL = re.compile(r"-LiteralPath '((?:[^']|'')*)'")
+    _WILDCARD = re.compile(r"(?:-path|Test-Path|rm) ([^\s')]+)", re.I)
+
+    def __init__(self, files):
+        self.files = dict(files)
+        self.scripts = []
+
+    def _targets(self, script):
+        literal = self._LITERAL.search(script)
+        if literal:
+            return [literal.group(1).replace("''", "'")]
+        pattern = self._WILDCARD.findall(script)[-1]
+        matches = [p for p in self.files
+                   if fnmatch.fnmatchcase(p.lower(), pattern.lower())]
+        return matches or [pattern]
+
+    def run_ps(self, script, retry=1, retry_delay=0):
+        self.scripts.append(script)
+        if "New-Item -ItemType directory" in script:
+            return _Response()
+        if "'CreateNew'" in script:
+            path = re.search(r"Open\('((?:[^']|'')*)'", script).group(1)
+            path = path.replace("''", "'")
+            if path in self.files:
+                return _Response(0, b"EXISTS\r\n")
+            self.files[path] = b""
+            return _Response(0, b"CREATED\r\n")
+        targets = self._targets(script)
+        if " rm " in script:
+            for t in targets:
+                self.files.pop(t, None)
+        elif script.startswith("Test-Path"):
+            found = any(t in self.files for t in targets)
+            return _Response(0, b"True\r\n" if found else b"False\r\n")
+        elif script.startswith("add-content"):
+            chunk = script.split('FromBase64String("')[1].split('")')[0]
+            for t in targets:
+                self.files[t] = self.files.get(t, b"") + base64.b64decode(chunk)
+        return _Response()
+
+
 class WinrmUploadTests(unittest.TestCase):
     def setUp(self):
         fd, self.local = tempfile.mkstemp()
@@ -92,11 +139,12 @@ class WinrmUploadTests(unittest.TestCase):
     def tearDown(self):
         os.remove(self.local)
 
-    def _upload(self, session, override=False, if_exists=None):
+    def _upload(self, session, override=False, if_exists=None,
+                remote_filename="file.txt"):
         out = io.StringIO()
         with redirect_stdout(out):
             CopyFiles(session, 1, 0).winrm_upload(
-                remote_path="C:\\tmp", remote_filename="file.txt",
+                remote_path="C:\\tmp", remote_filename=remote_filename,
                 local_path=self.local, step=4, override=override,
                 if_exists=if_exists)
         return out.getvalue()
@@ -134,6 +182,31 @@ class WinrmUploadTests(unittest.TestCase):
         session = _FakeSession(exists=False, test_path_code=1)
         self._upload(session)
         self.assertEqual(session.written, b"hello world")
+
+    def test_default_existence_check_exception_still_copies(self):
+        # Opening the shell can raise a plain Exception, not WinRmError.
+        session = _FakeSession(exists=False)
+        real_run_ps = session.run_ps
+
+        def run_ps(script, retry=1, retry_delay=0):
+            if script.startswith("Test-Path"):
+                raise Exception("failed to open shell")
+            return real_run_ps(script, retry, retry_delay)
+        session.run_ps = run_ps
+        self._upload(session)
+        self.assertEqual(session.written, b"hello world")
+
+    def test_default_upload_error_is_not_swallowed(self):
+        session = _FakeSession(exists=False)
+        real_run_ps = session.run_ps
+
+        def run_ps(script, retry=1, retry_delay=0):
+            if script.startswith("add-content"):
+                return _Response(5, b"", "access denied")
+            return real_run_ps(script, retry, retry_delay)
+        session.run_ps = run_ps
+        with self.assertRaises(WinRmError):
+            self._upload(session)
 
     def test_override_replaces_existing_file(self):
         session = self._existing()
@@ -230,6 +303,40 @@ class WinrmUploadTests(unittest.TestCase):
         self.assertNotIn("WARNING", out)
         self.assertFalse(any(s.startswith("Test-Path")
                              for s in session.scripts))
+
+    # Wildcard characters in the destination name: every command must act
+    # on that exact file, not on another file the name matches as a pattern.
+
+    def test_fail_bracketed_name_writes_claimed_file(self):
+        session = _DirSession({"C:\\tmp\\file1.txt": b"original"})
+        self._upload(session, if_exists="fail",
+                     remote_filename="file[1].txt")
+        self.assertEqual(session.files["C:\\tmp\\file[1].txt"],
+                         b"hello world")
+        self.assertEqual(session.files["C:\\tmp\\file1.txt"], b"original")
+
+    def test_overwrite_bracketed_name_leaves_other_file(self):
+        session = _DirSession({"C:\\tmp\\file1.txt": b"original",
+                               "C:\\tmp\\file[1].txt": b"stale"})
+        self._upload(session, if_exists="overwrite",
+                     remote_filename="file[1].txt")
+        self.assertEqual(session.files["C:\\tmp\\file[1].txt"],
+                         b"hello world")
+        self.assertEqual(session.files["C:\\tmp\\file1.txt"], b"original")
+
+    def test_default_bracketed_name_does_not_warn_for_other_file(self):
+        session = _DirSession({"C:\\tmp\\file1.txt": b"original"})
+        out = self._upload(session, remote_filename="file[1].txt")
+        self.assertNotIn("WARNING", out)
+        self.assertEqual(session.files["C:\\tmp\\file[1].txt"],
+                         b"hello world")
+        self.assertEqual(session.files["C:\\tmp\\file1.txt"], b"original")
+
+    def test_quote_in_name_is_escaped(self):
+        session = _DirSession({})
+        self._upload(session, if_exists="overwrite",
+                     remote_filename="it's.txt")
+        self.assertEqual(session.files["C:\\tmp\\it's.txt"], b"hello world")
 
     def test_invalid_value_raises_before_any_remote_call(self):
         session = self._existing()

@@ -196,9 +196,20 @@ class CopyFiles(object):
         self.retry = retry
         self.retry_delay = retry_delay
 
+    @staticmethod
+    def _ps_literal(path):
+        """Quote path as a PowerShell single-quoted string literal.
+
+        Pass the result to -LiteralPath (or a .NET call), never -Path:
+        -Path expands wildcards, so a destination like file[1].txt would
+        resolve to an existing file1.txt instead.
+        """
+        return "'{0}'".format(path.replace("'", "''"))
+
     def remote_file_exists(self, full_path):
         """Return True if full_path exists as a file on the remote node."""
-        script = 'Test-Path {0} -PathType Leaf'.format(full_path)
+        script = 'Test-Path -LiteralPath {0} -PathType Leaf'.format(
+            self._ps_literal(full_path))
         result = self.session.run_ps(script,
                                      retry=self.retry,
                                      retry_delay=self.retry_delay)
@@ -211,7 +222,7 @@ class CopyFiles(object):
         The check and the create are one filesystem operation (CreateNew),
         so two copies to the same new path cannot both get True.
         """
-        path = "'{0}'".format(full_path.replace("'", "''"))
+        path = self._ps_literal(full_path)
         # DirectoryNotFoundException is also an IOException, so only report
         # EXISTS when the path really is there; anything else is an error.
         script = (
@@ -272,9 +283,14 @@ class CopyFiles(object):
                             retry_delay=self.retry_delay)
 
         # Chunks are written with add-content, so anything already at
-        # full_path is appended to unless it is removed first.
+        # full_path is appended to unless it is removed first. Every command
+        # on full_path uses -LiteralPath so they all act on the same file.
+        literal_path = self._ps_literal(full_path)
         if mode == 'overwrite':
-            self.session.run_ps('if ((Test-Path {0} -PathType Leaf)) {{ rm {0} }}'.format(full_path), retry=self.retry, retry_delay=self.retry_delay)
+            self.session.run_ps(
+                'if ((Test-Path -LiteralPath {0} -PathType Leaf)) '
+                '{{ rm -LiteralPath {0} }}'.format(literal_path),
+                retry=self.retry, retry_delay=self.retry_delay)
         elif mode == 'fail':
             # Claim the file before writing; a separate exists check would
             # let two overlapping copies both see "absent" and both append.
@@ -285,9 +301,12 @@ class CopyFiles(object):
                 )
         elif if_exists is None:
             # Implicit append: warn, but never fail a copy that used to work.
+            # The probe can also raise plain session/transport exceptions
+            # (e.g. opening the shell fails); treat those as "unknown" too.
+            # The upload below is outside this handler, so it still fails.
             try:
                 exists = self.remote_file_exists(full_path)
-            except WinRmError:
+            except Exception:
                 exists = False
             if exists:
                 print('WARNING: remote file {} already exists, appending to '
@@ -300,9 +319,9 @@ class CopyFiles(object):
                 script = (
                     'add-content -value '
                     '$([System.Convert]::FromBase64String("{}")) '
-                    '-encoding byte -path {}'.format(
+                    '-encoding byte -LiteralPath {}'.format(
                         base64.b64encode(f.read(step)).decode(),
-                        full_path
+                        literal_path
                     )
                 )
                 while True:
