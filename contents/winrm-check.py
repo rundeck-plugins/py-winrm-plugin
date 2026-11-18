@@ -314,7 +314,7 @@ try:
                              auth=(username, password),
                              **arguments)
 
-    exec_command = "ipconfig"
+    exec_command = "systeminfo"
     result = session.run_cmd(exec_command)
     stdout = result.std_out.decode('utf-8', errors='replace').replace('\r\n', '\n')
     print(stdout)
