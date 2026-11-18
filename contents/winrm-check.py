@@ -316,9 +316,10 @@ try:
 
     exec_command = "ipconfig"
     result = session.run_cmd(exec_command)
-    print(result.std_out)
+    stdout = result.std_out.decode('utf-8', errors='replace').replace('\r\n', '\n')
+    print(stdout)
 
-    if(result.std_err):
+    if result.std_err:
         print("Connection with host %s failed" % hostname)
         sys.exit(1)
     else:
